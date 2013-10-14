@@ -15,17 +15,19 @@ function sunflower_landing_form($form, &$form_state) {
 
     if (user_access('administer sunflower')) {
       $admin = TRUE;
-      $results = sunflower_retrieve_proposals($user, TRUE);
+      $results = sunflower_retrieve_proposals($user->uid, TRUE);
     }
     else {
-      $results = sunflower_retrieve_proposals($user);
+      $results = sunflower_retrieve_proposals($user->uid);
     }
-
+    // @TODO: Look at Drupal docs about why we use t() instead of l().
     foreach ($results as $row) {
       if (!$admin) {
         $rows[] = array(
-          l(t('@description', array('@description' => $row['description'])), 'sunflower/proposal/edit/' . $row['proposal_id']),
+          t('@description', array('@description' => $row['description'])),
           $row['last_modified'],
+          t(l(t('edit'), 'sunflower/proposal/edit/' . $row['proposal_id'])),
+          t(l(t('summary'), 'sunflower/proposal/summary/' . $row['proposal_id'])),
         );
       }
       else {
@@ -34,22 +36,19 @@ function sunflower_landing_form($form, &$form_state) {
           l(t('@description', array('@description' => $row['description'])), 'sunflower/proposal/edit/' . $row['proposal_id']),
           $submitter_user->name,
           $row['last_modified'],
+          t(l(t('edit'), 'sunflower/proposal/edit/' . $row['proposal_id'])),
+          t(l(t('summary'), 'sunflower/proposal/summary/' . $row['proposal_id'])),
         );
       }
     }
+    $header = array();
+    $header[] = array('data' => t('Proposal'));
     if ($admin) {
-      $header = array(
-        t('Proposal'),
-        t('Submitter'),
-        t('Last modified date'),
-      );
+      $header[] = array('data' => t('Submitter'));
     }
-    else {
-      $header = array(
-        t('Proposal'),
-        t('Last modified date'),
-      );
-    }
+    $header[] = array('data' => t('Last modified date'));
+    $header[] = array('data' => t('Operations'), 'colspan' => '2');
+
     $form['proposal_table'] = array(
       '#markup' => theme('table', array(
         'header' => $header,

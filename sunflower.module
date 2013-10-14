@@ -5,11 +5,18 @@
  */
 function sunflower_menu() {
   $items = array();
-  $items['admin/sunflower/sunflower'] = array(
+  $items['admin/sunflower'] = array(
     'title' => 'Sunflower',
     '#description' => 'Configure the Sunflower submission module',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('sunflower_admin_form'),
+    'access arguments' => array('administer sunflower'),
+    'file' => 'includes/admin.inc',
+  );
+  $items['admin/sunflower/delete'] = array(
+    'title' => 'Sunflower Delete All Data',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sunflower_admin_delete_confirm_form'),
     'access arguments' => array('administer sunflower'),
     'file' => 'includes/admin.inc',
   );

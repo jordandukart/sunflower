@@ -83,3 +83,10 @@ function sunflower_delete_proposal($proposal_id) {
     ->condition('proposal_id', $proposal_id)
     ->execute();
 }
+
+function sunflower_delete_all_proposals() {
+  db_delete('sunflower_proposals')
+    ->execute();
+  db_delete('sunflower_presenters')
+    ->execute();
+}
