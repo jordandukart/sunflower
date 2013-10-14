@@ -1,0 +1,115 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function sunflower_schema() {
+  $schema = array();
+  $schema['sunflower_proposals'] = array(
+    'description' => 'Stores proposals and relevant data about them',
+    'fields' => array(
+      'proposal_id' => array(
+        'description' => 'The ID of the proposal',
+        'type' => 'serial',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'Type of the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'last_modified' => array(
+        'description' => 'The last modified timestamp of the proposal',
+        'mysql_type' => 'DATETIME',
+        'not null' => TRUE,
+      ),
+      'submitter_uid' => array(
+        'description' => 'Drupal UID of the submitter',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'description' => array(
+        'description' => 'Description of the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'special_requests' => array(
+        'description' => 'Special requests for the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'av_requests' => array(
+        'description' => 'AV requests for the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'panel_roundtable_workshop_title' => array(
+        'description' => 'Panel, Roundtable or Workshop Title for the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'presider_chair' => array(
+        'description' => 'Presider chair for the Panel, Roundtable or Workshop',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('proposal_id'),
+  );
+  $schema['sunflower_presenters'] = array(
+    'description' => 'Stores presenters and relevant data about them',
+    'fields' => array(
+      'proposal_id' => array(
+        'description' => 'The ID of the proposal',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'presenter_id' => array(
+        'description' => 'The ID of the presenter on the proposal',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'last_name' => array(
+        'description' => 'The last name of the presenter',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'first_name' => array(
+        'description' => 'The first name of the presenter',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'initials' => array(
+        'description' => 'The initials of the presenter',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'paper_title' => array(
+        'description' => 'The title of the paper',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'abstract' => array(
+        'description' => 'The abstract of the paper',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+    ),
+  );
+  return $schema;
+}

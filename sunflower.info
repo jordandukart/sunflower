@@ -1,5 +1,6 @@
-name = Sunflower Submission
+name = Sunflower
 description = Proposal submission for CSSR
 package = CSSR
 version = 7.x-dev
 core = 7.x
+configure = admin/sunflower/sunflower
