@@ -8,6 +8,14 @@
  * Admin settings form.
  */
 function sunflower_admin_form($form, &$form_state) {
+  module_load_include('inc', 'sunflower', 'includes/utilities');
+  $open = sunflower_is_submission_open();
+  if ($open) {
+    drupal_set_message(t('Please note that submissions are currently open.'));
+  }
+  else {
+    drupal_set_message(t('Please note that submissions are currently closed.'));
+  }
   $form = array();
   $start_date = variable_get('sunflower_opening_date', '');
   $end_date = variable_get('sunflower_ending_date', '');

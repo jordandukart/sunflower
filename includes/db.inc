@@ -9,14 +9,16 @@
 function sunflower_retrieve_proposals($user, $all = FALSE) {
   if (!$all) {
     return db_select('sunflower_proposals', 'p')
-      ->fields('p', array('proposal_id', 'last_modified', 'description'))
+      ->fields('p', array('proposal_id', 'last_modified', 'type'))
       ->condition('submitter_uid', $user)
+      ->orderBy('last_modified', 'DESC')
       ->execute()
       ->fetchAllAssoc('proposal_id', PDO::FETCH_ASSOC);
   }
   else {
     return db_select('sunflower_proposals', 'p')
-      ->fields('p', array('proposal_id', 'last_modified', 'submitter_uid', 'description'))
+      ->fields('p', array('proposal_id', 'last_modified', 'submitter_uid', 'type'))
+      ->orderBy('last_modified', 'DESC')
       ->execute()
       ->fetchAllAssoc('proposal_id', PDO::FETCH_ASSOC);
   }
@@ -44,6 +46,7 @@ function sunflower_insert_data(array $proposal_data, array $presenter_data, $pro
   }
   else {
     db_update('sunflower_proposals')
+      ->condition('proposal_id', $proposal_id)
       ->fields($proposal_data)
       ->execute();
     // To avoid a headache first delete all existing presenters before inserting
@@ -89,4 +92,35 @@ function sunflower_delete_all_proposals() {
     ->execute();
   db_delete('sunflower_presenters')
     ->execute();
+}
+
+function sunflower_autocomplete_all_paid_members() {
+  $query = db_select('field_data_field_membership_type', 'f');
+  $query->join('field_data_field_first_name', 'n', 'n.entity_id = f.entity_id');
+  $query->join('field_data_field_last_name', 'l', 'l.entity_id = f.entity_id');
+  $query->fields('n', array('field_first_name_value'))
+    ->fields('l', array('field_last_name_value'))
+    ->fields('f', array('entity_id'))
+    ->condition('field_membership_type_value', 'friend', '!=')
+    ->orderBy('l.field_last_name_value', 'ASC');
+  $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+  return $results;
+}
+
+function sunflower_validate_presenter($full_name) {
+  $query = db_select('field_data_field_first_name', 'n');
+  $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
+  $query->fields('n', array('field_first_name_value', 'entity_id'))
+    ->fields('l', array('field_last_name_value'));
+  $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+  $valid_presenter = FALSE;
+  foreach ($results as $result) {
+    $full_db_string = ucwords($result['field_first_name_value'] . ' ' . $result['field_last_name_value']);
+    if ($full_db_string === $full_name) {
+      $valid_presenter = TRUE;
+      break;
+    }
+
+  }
+  return $valid_presenter;
 }

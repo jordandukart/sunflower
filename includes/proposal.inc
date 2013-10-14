@@ -73,12 +73,11 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#collapsed' => FALSE,
     '#collapsible' => FALSE,
     '#title' => t('Proposal Details'),
-  );
-  $form['proposal_details']['description'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Description of Proposal for Program Review'),
-    '#description' => t('Maximum of 150 words'),
-    '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['description'] : '',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
+      ),
+    ),
   );
   $form['proposal_details']['panel_roundtable_workshop_title'] = array(
     '#type' => 'textfield',
@@ -94,7 +93,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   );
   $form['proposal_details']['presider_chair'] = array(
     '#type' => 'textfield',
-    '#title' => t('Full name of Presider/Chair'),
+    '#title' => t('Full name of Presider'),
     '#description' => t('Who is presiding over this panel, roundtable or workshop?'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['presider_chair'] : '',
     '#states' => array(
@@ -103,12 +102,19 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       ),
     ),
   );
-  $form['proposal_details']['special_requests'] = array(
+  $form['requests'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Requests'),
+    '#collapsed' => FALSE,
+    '#collapsible' => FALSE,
+    '#weight' => 149,
+  );
+  $form['requests']['special_requests'] = array(
     '#type' => 'textarea',
     '#title' => t('Special Requests'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['special_requests'] : '',
   );
-  $form['proposal_details']['av_requests'] = array(
+  $form['requests']['av_requests'] = array(
     '#type' => 'textarea',
     '#title' => t('AV Requests'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['av_requests'] : '',
@@ -128,27 +134,13 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#collapsible' => FALSE,
       '#title' => t('Presenter @num', array('@num' => $i)),
     );
-    $name_parts = array(
-      'last_name',
-      'first_name',
-      'initials',
+    $form['fieldset_' . $i]['presenter_name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Name of presenter'),
+      '#autocomplete_path' => 'sunflower/autocomplete',
+      '#description' => t('Type "*" to list all paid members'),
+      '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['presenter_name'] : FALSE,
     );
-    foreach ($name_parts as $key) {
-      if ($key == 'last_name') {
-        $title = t('Last Name');
-      }
-      elseif ($key == 'first_name') {
-        $title = t('First Name');
-      }
-      else {
-        $title = t('Initials');
-      }
-      $form['fieldset_' . $i][$key] = array(
-        '#type' => 'textfield',
-        '#title' => $title,
-        '#default_value' => $default_presenter_value ? $db_data['presenters'][$i][$key] : FALSE,
-      );
-    }
     $form['fieldset_' . $i]['paper_title'] = array(
       '#type' => 'textfield',
       '#title' => t('Paper Title'),
@@ -157,7 +149,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['paper_title'] : FALSE,
     );
     $form['fieldset_' . $i]['abstract'] = array(
-      '#type' => 'textfield',
+      '#type' => 'textarea',
       '#title' => t('Abstract for Conference Program'),
       '#description' => t('Maximum of 150 words'),
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['abstract'] : FALSE,
@@ -179,6 +171,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   }
   $form['submit'] = array(
     '#type' => 'submit',
+    '#name' => 'sunflower_proposal_submit',
     '#value' => empty($db_data) ? t('Submit') : t('Update'),
     '#weight' => 150,
   );
@@ -186,6 +179,10 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     $form['proposal_id'] = array(
       '#type' => 'value',
       '#value' => $db_data['proposal']['proposal_id'],
+    );
+    $form['submitter_uid'] = array(
+      '#type' => 'value',
+      '#value' => $db_data['proposal']['submitter_uid'],
     );
     $form['delete'] = array(
       '#type' => 'submit',
@@ -203,7 +200,146 @@ function sunflower_proposal_delete($form, &$form_state) {
 }
 
 function sunflower_proposal_form_validate($form, &$form_state) {
-  // @TODO: Clarify required fields etc.
+  module_load_include('inc', 'sunflower', 'includes/db');
+
+  if ($form_state['clicked_button']['#name'] == 'sunflower_proposal_submit') {
+    dsm($form_state);
+    $type = $form_state['values']['proposal_type']['proposal_choices'];
+    $required_presenters = array(
+      'individual' => 1,
+      'roundtable' => 3,
+      'panel' => 4,
+      'workshop' => 8,
+    );
+    $max_presenters = array(
+      'individual' => 2,
+      'roundtable' => 4,
+      'panel' => 4,
+      'workshop' => 8,
+    );
+    $all_presenters = array();
+    // Presider and workshop_panel_roundtable title required if not individual.
+    if ($type != 'individual') {
+      if (empty($form_state['values']['proposal_details']['panel_roundtable_workshop_title'])) {
+        form_set_error('proposal_details][panel_roundtable_workshop_title', t('A title is required for the @type!', array('@type' => $type)));
+      }
+      if (empty($form_state['values']['proposal_details']['presider_chair'])) {
+        form_set_error('proposal_details][presider_chair', t('A name is required for the presider of the @type!', array('@type' => $type)));
+      }
+    }
+    $readable_fields = array(
+      'presenter_name' => t('presenter name'),
+      'paper_title' => t('paper title'),
+      'abstract' => t('abstract'),
+    );
+    $minimum_required = FALSE;
+    // Logic to check minimum required fields.
+    for ($i = 1; $i <= $required_presenters[$type]; $i++) {
+      $error_count = 0;
+      foreach ($form_state['values']["fieldset_$i"] as $field => $value) {
+        if (empty($value)) {
+          form_set_error("fieldset_$i][$field", t('The @field field must not be empty for presenter @num!', array(
+            '@field' => $readable_fields[$field],
+            '@num' => $i,
+          )));
+          $error_count++;
+        }
+        elseif ($field == 'presenter_name') {
+          // Go make sure who they entered is in the database.
+          $valid = sunflower_validate_presenter($value);
+          if (!$valid) {
+            form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
+            '%presenter' => $value,
+            '@num' => $i,
+            )));
+          }
+          else {
+            $existing = array_search($value, $all_presenters);
+            if ($existing) {
+              form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
+                '%presenter' => $value,
+                '@num' => $existing,
+                '@pres' => $i,
+              )));
+            }
+            else {
+              $all_presenters[$i] = $value;
+            }
+          }
+        }
+        elseif ($field == 'abstract') {
+          $number_of_words = str_word_count($value);
+          if ($number_of_words > 150) {
+            form_set_error("fieldset_$i][$field", t('The maximum number of words for the abstract of presenter @num is 150! You have entered @words words!', array(
+              '@num' => $i,
+              '@words' => $number_of_words,
+            )));
+          }
+        }
+      }
+      if ($error_count == 3) {
+        $minimum_required = TRUE;
+      }
+    }
+    // For the non-required presenters make sure they aren't submitting half
+    // filled out fields.
+    for ($i > $required_presenters[$type]; $i <= $max_presenters[$type]; $i++) {
+      $all_empty = TRUE;
+      foreach ($form_state['values']["fieldset_$i"] as $field => $value) {
+        if (!empty($value)) {
+          $all_empty = FALSE;
+        }
+      }
+      if (!$all_empty) {
+        foreach ($form_state['values']["fieldset_$i"] as $field => $value) {
+          if (empty($value)) {
+            form_set_error("fieldset_$i][$field", t('The @field field must not be empty for presenter @num!', array(
+              '@field' => $readable_fields[$field],
+              '@num' => $i,
+            )));
+          }
+          elseif ($field == 'presenter_name') {
+            // Go make sure who they entered is in the database.
+            $valid = sunflower_validate_presenter($value);
+            if (!$valid) {
+              form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
+                '%presenter' => $value,
+                '@num' => $i,
+              )));
+            }
+            else {
+              $existing = array_search($value, $all_presenters);
+              if ($existing) {
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
+                  '%presenter' => $value,
+                  '@num' => $existing,
+                  '@pres' => $i,
+                )));
+              }
+              else {
+                $all_presenters[$i] = $value;
+              }
+            }
+          }
+          elseif ($field == 'abstract') {
+            $number_of_words = str_word_count($value);
+            if ($number_of_words > 150) {
+              form_set_error("fieldset_$i][$field", t('The maximum number of words for the abstract of presenter @num is 150! You have entered @words words!', array(
+                '@num' => $i,
+                '@words' => $number_of_words,
+              )));
+            }
+          }
+        }
+      }
+    }
+    if ($minimum_required) {
+      drupal_set_message(t('Please note that for the @type proposals at least @num presenters are required!', array(
+        '@type' => $type,
+        '@num' => $required_presenters[$type],
+      )), 'error', FALSE);
+    }
+  }
 }
 
 function sunflower_proposal_form_submit($form, &$form_state) {
@@ -221,7 +357,7 @@ function sunflower_proposal_form_submit($form, &$form_state) {
     'panel' => 4,
     'workshop' => 8,
   );
-  $proposal_data['submitter_uid'] = $user->uid;
+  $proposal_data['submitter_uid'] = isset($form_state['values']['submitter_uid']) ? $form_state['values']['submitter_uid'] : $user->uid;
   $proposal_data['last_modified'] = date("Y-m-d H:i:s");
   $type = $form_state['values']['proposal_type']['proposal_choices'];
   $field_num = $max_presenters[$type];
@@ -233,9 +369,8 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   // Get the proposal type, description, special and av requests as these are
   // the same across all types.
   $proposal_data['type'] = $form_state['values']['proposal_type'];
-  $proposal_data['description'] = $form_state['values']['proposal_details']['description'];
-  $proposal_data['special_requests'] = $form_state['values']['proposal_details']['special_requests'];
-  $proposal_data['av_requests'] = $form_state['values']['proposal_details']['av_requests'];
+  $proposal_data['special_requests'] = $form_state['values']['requests']['special_requests'];
+  $proposal_data['av_requests'] = $form_state['values']['requests']['av_requests'];
 
   // If it's not an individual presentation get the title and the chair.
   if ($type != 'individual') {

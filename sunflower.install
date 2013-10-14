@@ -31,12 +31,6 @@ function sunflower_schema() {
         'length' => 11,
         'not null' => TRUE,
       ),
-      'description' => array(
-        'description' => 'Description of the proposal',
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-      ),
       'special_requests' => array(
         'description' => 'Special requests for the proposal',
         'type' => 'varchar',
@@ -79,23 +73,11 @@ function sunflower_schema() {
         'length' => 11,
         'not null' => TRUE,
       ),
-      'last_name' => array(
-        'description' => 'The last name of the presenter',
+      'presenter_name' => array(
+        'description' => 'The name of the presenter',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
-      ),
-      'first_name' => array(
-        'description' => 'The first name of the presenter',
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-      ),
-      'initials' => array(
-        'description' => 'The initials of the presenter',
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => FALSE,
       ),
       'paper_title' => array(
         'description' => 'The title of the paper',

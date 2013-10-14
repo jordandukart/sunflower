@@ -36,6 +36,13 @@ function sunflower_menu() {
     'access callback' => 'sunflower_proposal_create_access',
     'file' => 'includes/proposal.inc',
   );
+  $items['sunflower/autocomplete/%'] = array(
+    'page callback' => 'sunflower_presenter_autocomplete',
+    'page arguments' => array(2),
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'file' => 'includes/autocomplete.inc',
+  );
   $items['sunflower/proposal/edit/%'] = array(
     'title' => 'Sunflower Proposal Submission',
     'page callback' => 'drupal_get_form',
@@ -51,6 +58,14 @@ function sunflower_menu() {
     'access callback' => 'sunflower_proposal_edit_access',
     'access arguments' => array(3),
     'file' => 'includes/delete.inc',
+  );
+  $items['sunflower/proposal/summary/%'] = array(
+    'title' => 'Sunflower Proposal Summary',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sunflower_proposal_summary_form', 3),
+    'access callback' => 'sunflower_proposal_summary_access',
+    'access arguments' => array(3),
+    'file' => 'includes/summary.inc',
   );
   return $items;
 }
@@ -85,5 +100,22 @@ function sunflower_proposal_edit_access($proposal_id) {
   }
   else {
     return sunflower_is_valid_submitter() && sunflower_is_submission_open() && ($submitter == $user->uid);
+  }
+}
+
+function sunflower_proposal_summary_access($proposal_id) {
+  module_load_include('inc', 'sunflower', 'includes/utilities');
+  module_load_include('inc', 'sunflower', 'includes/db');
+  global $user;
+  $submitter = sunflower_retrieve_submitter_uid($proposal_id);
+  // Non-existing proposal.
+  if (!$submitter) {
+    return FALSE;
+  }
+  if (user_access('administer sunflower')) {
+    return TRUE;
+  }
+  else {
+    return sunflower_is_valid_submitter() && ($submitter == $user->uid);
   }
 }
