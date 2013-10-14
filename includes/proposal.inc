@@ -9,7 +9,6 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   $db_data = array();
   if ($edit_submission !== NULL) {
     $db_data = sunflower_retrieve_data($edit_submission);
-    dsm($db_data);
   }
 
   $form['proposal_type'] = array(
@@ -209,11 +208,10 @@ function sunflower_proposal_form_validate($form, &$form_state) {
 
 function sunflower_proposal_form_submit($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
-
   global $user;
   $update = FALSE;
   if (isset($form_state['values']['proposal_id'])) {
-    $update = TRUE;
+    $update = $form_state['values']['proposal_id'];
   }
   $proposal_data = array();
   $presenter_data = array();
@@ -243,6 +241,10 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   if ($type != 'individual') {
     $proposal_data['panel_roundtable_workshop_title'] = $form_state['values']['proposal_details']['panel_roundtable_workshop_title'];
     $proposal_data['presider_chair'] = $form_state['values']['proposal_details']['presider_chair'];
+  }
+  else {
+    $proposal_data['panel_roundtable_workshop_title'] = '';
+    $proposal_data['presider_chair'] = '';
   }
   $form_state['redirect'] = 'sunflower';
   drupal_set_message(t('The proposal has been submitted!'));

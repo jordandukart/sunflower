@@ -30,8 +30,8 @@ function sunflower_retrieve_submitter_uid($proposal_id) {
     ->fetchField();
 }
 
-function sunflower_insert_data(array $proposal_data, array $presenter_data, $update) {
-  if (!$update) {
+function sunflower_insert_data(array $proposal_data, array $presenter_data, $proposal_id) {
+  if (!$proposal_id) {
     $proposal_id = db_insert('sunflower_proposals')
       ->fields($proposal_data)
       ->execute();
@@ -43,13 +43,17 @@ function sunflower_insert_data(array $proposal_data, array $presenter_data, $upd
     }
   }
   else {
-    // @TODO: Why is updating shit wiping, likely cause of FSVs and default value I imagine.
-    $proposal_id = db_update('sunflower_proposals')
+    db_update('sunflower_proposals')
       ->fields($proposal_data)
+      ->execute();
+    // To avoid a headache first delete all existing presenters before inserting
+    // the new ones.
+    db_delete('sunflower_presenters')
+      ->condition('proposal_id', $proposal_id)
       ->execute();
     foreach ($presenter_data as $presenter) {
       $presenter['proposal_id'] = $proposal_id;
-      db_update('sunflower_presenters')
+      db_insert('sunflower_presenters')
         ->fields($presenter)
         ->execute();
     }
