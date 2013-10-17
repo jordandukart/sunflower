@@ -9,7 +9,7 @@
  */
 function sunflower_presenter_autocomplete($user_string) {
   module_load_include('inc', 'sunflower', 'includes/db');
-  $all_paid = sunflower_autocomplete_all_paid_members();
+  $all_paid = sunflower_retrieve_all_paid_members();
   $output = array();
   foreach ($all_paid as $value) {
     $full_name = ucwords($value['field_first_name_value'] . ' ' . $value['field_last_name_value']);

@@ -94,7 +94,7 @@ function sunflower_delete_all_proposals() {
     ->execute();
 }
 
-function sunflower_autocomplete_all_paid_members() {
+function sunflower_retrieve_all_paid_members() {
   $query = db_select('field_data_field_membership_type', 'f');
   $query->join('field_data_field_first_name', 'n', 'n.entity_id = f.entity_id');
   $query->join('field_data_field_last_name', 'l', 'l.entity_id = f.entity_id');
@@ -107,7 +107,7 @@ function sunflower_autocomplete_all_paid_members() {
   return $results;
 }
 
-function sunflower_validate_presenter($full_name) {
+function sunflower_validate_presenter_paid_and_exists($full_name) {
   $query = db_select('field_data_field_first_name', 'n');
   $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
   $query->fields('n', array('field_first_name_value', 'entity_id'))
@@ -123,4 +123,59 @@ function sunflower_validate_presenter($full_name) {
 
   }
   return $valid_presenter;
+}
+
+function sunflower_retrieve_entity_id_from_full_name($full_name) {
+  $query = db_select('field_data_field_first_name', 'n');
+  $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
+  $query->fields('n', array('field_first_name_value', 'entity_id'))
+    ->fields('l', array('field_last_name_value'));
+  $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+  $entity_id = FALSE;
+  foreach ($results as $result) {
+    $full_db_string = ucwords($result['field_first_name_value'] . ' ' . $result['field_last_name_value']);
+    if ($full_db_string === $full_name) {
+      $entity_id = $result['entity_id'];
+      break;
+    }
+  }
+  return (int) $entity_id;
+}
+function sunflower_validate_proposal_amount($full_name, $type) {
+  $entity_id = sunflower_retrieve_entity_id_from_full_name($full_name);
+  if ($entity_id) {
+    $query = db_select('sunflower_presenters', 's');
+    $query->join('sunflower_proposals', 'p', 's.proposal_id = p.proposal_id');
+    $query->fields('p', array('type'));
+    $query->condition('entity_id', $entity_id, '=');
+    $results = $query->execute()->fetchCol();
+    if (count($results) == 2) {
+      return array(
+        'valid' => FALSE,
+        'type' => 'two',
+      );
+    }
+    elseif ($type == 'individual' || $type == 'panel') {
+      if (array_intersect(array('individual', 'panel'), $results)) {
+        if (in_array($type, $results)) {
+          return array(
+            'valid' => FALSE,
+            'type' => 'same',
+          );
+        }
+        else {
+          return array(
+            'valid' => FALSE,
+            'type' => 'individual_panel',
+          );
+        }
+      }
+      else {
+        return array(
+          'valid' => TRUE,
+        );
+      }
+    }
+  }
+  return FALSE;
 }

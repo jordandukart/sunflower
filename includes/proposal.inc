@@ -203,7 +203,6 @@ function sunflower_proposal_form_validate($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
 
   if ($form_state['clicked_button']['#name'] == 'sunflower_proposal_submit') {
-    dsm($form_state);
     $type = $form_state['values']['proposal_type']['proposal_choices'];
     $required_presenters = array(
       'individual' => 1,
@@ -246,7 +245,7 @@ function sunflower_proposal_form_validate($form, &$form_state) {
         }
         elseif ($field == 'presenter_name') {
           // Go make sure who they entered is in the database.
-          $valid = sunflower_validate_presenter($value);
+          $valid = sunflower_validate_presenter_paid_and_exists($value);
           if (!$valid) {
             form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
             '%presenter' => $value,
@@ -254,16 +253,48 @@ function sunflower_proposal_form_validate($form, &$form_state) {
             )));
           }
           else {
-            $existing = array_search($value, $all_presenters);
-            if ($existing) {
-              form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
-                '%presenter' => $value,
-                '@num' => $existing,
-                '@pres' => $i,
-              )));
+            $validity = sunflower_validate_proposal_amount($value, $type);
+            if ($validity['valid'] === FALSE) {
+              if ($validity['type'] == 'same') {
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal!', array(
+                  '%presenter' => $value,
+                  '@num' => $i,
+                  '@type' => $type,
+                )));
+              }
+              elseif ($validity['type'] == 'two') {
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in two proposals!', array(
+                  '%presenter' => $value,
+                  '@num' => $i,
+                )));
+              }
+              elseif ($validity['type'] == 'individual_panel') {
+                if ($type == 'individual') {
+                  $restrict = 'panel';
+                }
+                else {
+                  $restrict = 'individual';
+                }
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
+                  '%presenter' => $value,
+                  '@num' => $i,
+                  '@type' => $type,
+                  '@restrict' => $restrict,
+                )));
+              }
             }
             else {
-              $all_presenters[$i] = $value;
+              $existing = array_search($value, $all_presenters);
+              if ($existing) {
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
+                  '%presenter' => $value,
+                  '@num' => $existing,
+                  '@pres' => $i,
+                )));
+              }
+              else {
+                $all_presenters[$i] = $value;
+              }
             }
           }
         }
@@ -300,7 +331,7 @@ function sunflower_proposal_form_validate($form, &$form_state) {
           }
           elseif ($field == 'presenter_name') {
             // Go make sure who they entered is in the database.
-            $valid = sunflower_validate_presenter($value);
+            $valid = sunflower_validate_presenter_paid_and_exists($value);
             if (!$valid) {
               form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
                 '%presenter' => $value,
@@ -308,16 +339,48 @@ function sunflower_proposal_form_validate($form, &$form_state) {
               )));
             }
             else {
-              $existing = array_search($value, $all_presenters);
-              if ($existing) {
-                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
-                  '%presenter' => $value,
-                  '@num' => $existing,
-                  '@pres' => $i,
-                )));
+              $validity = sunflower_validate_proposal_amount($value, $type);
+              if ($validity['valid'] === FALSE) {
+                if ($validity['type'] == 'same') {
+                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal!', array(
+                    '%presenter' => $value,
+                    '@num' => $i,
+                    '@type' => $type,
+                  )));
+                }
+                elseif ($validity['type'] == 'two') {
+                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists two proposals!', array(
+                    '%presenter' => $value,
+                    '@num' => $i,
+                  )));
+                }
+                elseif ($validity['type'] == 'individual_panel') {
+                  if ($type == 'individual') {
+                    $restrict = 'panel';
+                  }
+                  else {
+                    $restrict = 'individual';
+                  }
+                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
+                    '%presenter' => $value,
+                    '@num' => $i,
+                    '@type' => $type,
+                    '@restrict' => $restrict,
+                  )));
+                }
               }
               else {
-                $all_presenters[$i] = $value;
+                $existing = array_search($value, $all_presenters);
+                if ($existing) {
+                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter for presenter @pres has already been entered in presenter @num!', array(
+                    '%presenter' => $value,
+                    '@num' => $existing,
+                    '@pres' => $i,
+                  )));
+                }
+                else {
+                  $all_presenters[$i] = $value;
+                }
               }
             }
           }
@@ -334,11 +397,12 @@ function sunflower_proposal_form_validate($form, &$form_state) {
       }
     }
     if ($minimum_required) {
-      drupal_set_message(t('Please note that for the @type proposals at least @num presenters are required!', array(
+      drupal_set_message(t('Please note that for @type proposals at least @num presenters are required!', array(
         '@type' => $type,
         '@num' => $required_presenters[$type],
       )), 'error', FALSE);
     }
+    //form_set_error('herp', 'derp');
   }
 }
 
@@ -364,11 +428,12 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   for ($i = 1; $i <= $field_num; $i++) {
     $presenter_data["presenter_$i"] = $form_state['values']["fieldset_$i"];
     $presenter_data["presenter_$i"]['presenter_id'] = $i;
+    $presenter_data["presenter_$i"]['entity_id'] = sunflower_retrieve_entity_id_from_full_name($form_state['values']["fieldset_$i"]['presenter_name']);
     // Grok the values and do shit with them.
   }
   // Get the proposal type, description, special and av requests as these are
   // the same across all types.
-  $proposal_data['type'] = $form_state['values']['proposal_type'];
+  $proposal_data['type'] = $type;
   $proposal_data['special_requests'] = $form_state['values']['requests']['special_requests'];
   $proposal_data['av_requests'] = $form_state['values']['requests']['av_requests'];
 

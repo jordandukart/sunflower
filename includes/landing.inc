@@ -56,13 +56,11 @@ function sunflower_landing_form($form, &$form_state) {
       )),
     );
 
-    if (sunflower_is_submission_open() === FALSE) {
+    if (sunflower_is_submission_open() === FALSE && !user_access('administer sunflower')) {
       $opening_date = variable_get('sunflower_opening_date', '');
       $ending_date = variable_get('sunflower_ending_date', '');
       if (!is_array($opening_date) || !is_array($ending_date)) {
-        if (!user_access('administer sunflower')) {
-          drupal_set_message(t('Sorry submissions are not currently open!'), 'error');
-        }
+        drupal_set_message(t('Sorry submissions are not currently open!'), 'error');
       }
       else {
         $current_time = strtotime(date('Y-m-d'));
@@ -71,19 +69,15 @@ function sunflower_landing_form($form, &$form_state) {
         $opening_string = $opening_date['year'] . '-' . $opening_date['month'] . '-' . $opening_date['day'];
         $ending_string = $ending_date['year'] . '-' . $ending_date['month'] . '-' . $ending_date['day'];
         if ($current_time < $opening_time) {
-          if (!user_access('administer sunflower')) {
-            drupal_set_message(t('Sorry submissions are set to open on @date!', array('@date' => $opening_string)), 'error');
-          }
+          drupal_set_message(t('Sorry submissions are set to open on @date!', array('@date' => $opening_string)), 'error');
         }
         elseif ($current_time > $ending_time) {
-          if (!user_access('administer sunflower')) {
-            drupal_set_message(t('Sorry submissions closed on @date!', array('@date' => $ending_string)), 'error');
-          }
+          drupal_set_message(t('Sorry submissions closed on @date!', array('@date' => $ending_string)), 'error');
         }
       }
     }
     else {
-      if (user_access('administer sunflower') || (!user_access('adminisiter sunflower') && count($rows) == 0)) {
+      if (user_access('administer sunflower') || (!user_access('adminisiter sunflower') && count($rows) < 2)) {
         $form['proposal_submit'] = array(
           '#name' => 'sunflower_proposal_submit',
           '#type' => 'submit',
@@ -115,7 +109,25 @@ function sunflower_export_as_csv() {
   $csv_array = array();
   foreach ($db_data as $proposal) {
     $individual_proposal = sunflower_retrieve_data($proposal['proposal_id']);
-    dsm($individual_proposal);
+    for ($i = 1; $i <= 8; $i++) {
+      if (isset($individual_proposal['presenters'][$i])) {
+        if (!empty($individual_proposal['presenters'][$i]['presenter_name'])) {
+          $i_user = user_load($individual_proposal['presenters'][$i]['entity_id']);
+          $i_user_mail = $i_user->mail;
+          if (empty($i_user_mail)) {
+            $i_user_mail = t('Unknown');
+          }
+          $individual_proposal['presenters'][$i]['email'] = $i_user_mail;
+        }
+        else {
+          // Need to set a bunch of defaults of empty strings.
+          $individual_proposal['presenters'][$i]['email'] = '';
+          $individual_proposal['presenters'][$i]['presenter_name'] = '';
+          $individual_proposal['presenters'][$i]['paper_title'] = '';
+          $individual_proposal['presenters'][$i]['abstract'] = '';
+        }
+      }
+    }
     $submitter_user = user_load($individual_proposal['proposal']['submitter_uid']);
     $submitter = $submitter_user->name;
     $csv_array[] = array(
@@ -127,27 +139,35 @@ function sunflower_export_as_csv() {
       $individual_proposal['presenters'][1]['presenter_name'],
       $individual_proposal['presenters'][1]['paper_title'],
       $individual_proposal['presenters'][1]['abstract'],
+      $individual_proposal['presenters'][1]['email'],
       isset($individual_proposal['presenters'][2]) ? $individual_proposal['presenters'][2]['presenter_name'] : '',
       isset($individual_proposal['presenters'][2]) ? $individual_proposal['presenters'][2]['paper_title'] : '',
       isset($individual_proposal['presenters'][2]) ? $individual_proposal['presenters'][2]['abstract'] : '',
+      isset($individual_proposal['presenters'][2]) ? $individual_proposal['presenters'][2]['email'] : '',
       isset($individual_proposal['presenters'][3]) ? $individual_proposal['presenters'][3]['presenter_name'] : '',
       isset($individual_proposal['presenters'][3]) ? $individual_proposal['presenters'][3]['paper_title'] : '',
       isset($individual_proposal['presenters'][3]) ? $individual_proposal['presenters'][3]['abstract'] : '',
+      isset($individual_proposal['presenters'][3]) ? $individual_proposal['presenters'][3]['email'] : '',
       isset($individual_proposal['presenters'][4]) ? $individual_proposal['presenters'][4]['presenter_name'] : '',
       isset($individual_proposal['presenters'][4]) ? $individual_proposal['presenters'][4]['paper_title'] : '',
       isset($individual_proposal['presenters'][4]) ? $individual_proposal['presenters'][4]['abstract'] : '',
+      isset($individual_proposal['presenters'][4]) ? $individual_proposal['presenters'][4]['email'] : '',
       isset($individual_proposal['presenters'][5]) ? $individual_proposal['presenters'][5]['presenter_name'] : '',
       isset($individual_proposal['presenters'][5]) ? $individual_proposal['presenters'][5]['paper_title'] : '',
       isset($individual_proposal['presenters'][5]) ? $individual_proposal['presenters'][5]['abstract'] : '',
+      isset($individual_proposal['presenters'][5]) ? $individual_proposal['presenters'][5]['email'] : '',
       isset($individual_proposal['presenters'][6]) ? $individual_proposal['presenters'][6]['presenter_name'] : '',
       isset($individual_proposal['presenters'][6]) ? $individual_proposal['presenters'][6]['paper_title'] : '',
       isset($individual_proposal['presenters'][6]) ? $individual_proposal['presenters'][6]['abstract'] : '',
+      isset($individual_proposal['presenters'][6]) ? $individual_proposal['presenters'][6]['email'] : '',
       isset($individual_proposal['presenters'][7]) ? $individual_proposal['presenters'][7]['presenter_name'] : '',
       isset($individual_proposal['presenters'][7]) ? $individual_proposal['presenters'][7]['paper_title'] : '',
       isset($individual_proposal['presenters'][7]) ? $individual_proposal['presenters'][7]['abstract'] : '',
+      isset($individual_proposal['presenters'][7]) ? $individual_proposal['presenters'][7]['email'] : '',
       isset($individual_proposal['presenters'][8]) ? $individual_proposal['presenters'][8]['presenter_name'] : '',
       isset($individual_proposal['presenters'][8]) ? $individual_proposal['presenters'][8]['paper_title'] : '',
       isset($individual_proposal['presenters'][8]) ? $individual_proposal['presenters'][8]['abstract'] : '',
+      isset($individual_proposal['presenters'][8]) ? $individual_proposal['presenters'][8]['email'] : '',
       $individual_proposal['proposal']['special_requests'],
       $individual_proposal['proposal']['av_requests'],
     );
@@ -167,27 +187,35 @@ function sunflower_export_as_csv() {
     t('Presenter 1 Name'),
     t('Presenter 1 Paper Title'),
     t('Presenter 1 Abstract'),
+    t('Presenter 1 E-mail'),
     t('Presenter 2 Name'),
     t('Presenter 2 Paper Title'),
     t('Presenter 2 Abstract'),
+    t('Presenter 2 E-mail'),
     t('Presenter 3 Name'),
     t('Presenter 3 Paper Title'),
     t('Presenter 3 Abstract'),
+    t('Presenter 3 E-mail'),
     t('Presenter 4 Name'),
     t('Presenter 4 Paper Title'),
     t('Presenter 4 Abstract'),
+    t('Presenter 4 E-mail'),
     t('Presenter 5 Name'),
     t('Presenter 5 Paper Title'),
     t('Presenter 5 Abstract'),
+    t('Presenter 5 E-mail'),
     t('Presenter 6 Name'),
     t('Presenter 6 Paper Title'),
     t('Presenter 6 Abstract'),
+    t('Presenter 6 E-mail'),
     t('Presenter 7 Name'),
     t('Presenter 7 Paper Title'),
     t('Presenter 7 Abstract'),
+    t('Presenter 7 E-mail'),
     t('Presenter 8 Name'),
     t('Presenter 8 Paper Title'),
     t('Presenter 8 Abstract'),
+    t('Presenter 8 E-mail'),
     t('Special Requests'),
     t('AV Requests'),
   ));

@@ -91,6 +91,12 @@ function sunflower_schema() {
         'length' => 255,
         'not null' => TRUE,
       ),
+      'entity_id' => array(
+        'description' => 'The entity ID of the presenter',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
     ),
   );
   return $schema;

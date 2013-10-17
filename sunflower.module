@@ -83,7 +83,7 @@ function sunflower_permission() {
 
 function sunflower_proposal_create_access() {
   module_load_include('inc', 'sunflower', 'includes/utilities');
-  return sunflower_is_valid_submitter() && sunflower_is_submission_open();
+  return (user_access('administer sunflower')) || (sunflower_is_valid_submitter() && sunflower_is_submission_open());
 }
 
 function sunflower_proposal_edit_access($proposal_id) {
