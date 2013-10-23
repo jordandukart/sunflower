@@ -31,6 +31,24 @@ function sunflower_schema() {
         'length' => 11,
         'not null' => TRUE,
       ),
+      'category_1' => array(
+        'description' => 'The first category the proposal falls into',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'category_2' => array(
+        'description' => 'The second category the proposal falls into',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'category_3' => array(
+        'description' => 'The third category the proposal falls into',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
       'special_requests' => array(
         'description' => 'Special requests for the proposal',
         'type' => 'varchar',
@@ -51,6 +69,12 @@ function sunflower_schema() {
       ),
       'presider_chair' => array(
         'description' => 'Presider chair for the Panel, Roundtable or Workshop',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'presider_email' => array(
+        'description' => 'Email of the presider chair for the Panel, Roundtable or Workshop',
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,

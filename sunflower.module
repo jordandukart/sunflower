@@ -36,9 +36,16 @@ function sunflower_menu() {
     'access callback' => 'sunflower_proposal_create_access',
     'file' => 'includes/proposal.inc',
   );
-  $items['sunflower/autocomplete/%'] = array(
+  $items['sunflower/autocomplete/presenter/%'] = array(
     'page callback' => 'sunflower_presenter_autocomplete',
-    'page arguments' => array(2),
+    'page arguments' => array(3),
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'file' => 'includes/autocomplete.inc',
+  );
+  $items['sunflower/autocomplete/category/%'] = array(
+    'page callback' => 'sunflower_categories_autocomplete',
+    'page arguments' => array(3),
     'type' => MENU_CALLBACK,
     'access callback' => TRUE,
     'file' => 'includes/autocomplete.inc',

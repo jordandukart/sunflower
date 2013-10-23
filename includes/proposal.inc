@@ -48,26 +48,49 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   );
   $form['proposal_type']['workshop_description'] = array(
     '#type' => 'item',
-    '#markup' => t('A Workshop Session Proposal includes up to eight papers circulated in advance on a common theme.'),
+    '#markup' => t('A Workshop Session Proposal includes up to four papers circulated in advance on a common theme.'),
     '#states' => array(
       'visible' => array(
         ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'workshop'),
       ),
     ),
   );
-  $form['optional_individual'] = array(
+  $form['categories'] = array(
     '#type' => 'fieldset',
     '#collapsed' => FALSE,
     '#collapsible' => FALSE,
     '#weight' => 123,
-    '#title' => t('Section C TBD'),
+    '#title' => t('Categories'),
     '#description' => t('Indicate three broad thematic groups which your proposal might fall under'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'individual'),
-      ),
-    ),
   );
+  for ($i = 1; $i <= 3; $i++) {
+    $enabled = FALSE;
+    $category_default = NULL;
+    if (isset($db_data['proposal'])) {
+      if (!empty($db_data['proposal']["category_$i"])) {
+        $enabled = TRUE;
+        $category_default = $db_data['proposal']["category_$i"];
+      }
+    }
+    $form['categories']['category_' . $i . '_checkbox'] = array(
+      '#type' => 'checkbox',
+      '#title' => t("Category @num", array('@num' => $i)),
+      '#default_value' => $enabled,
+
+    );
+    $form['categories']['category_' . $i . '_textfield'] = array(
+      '#type' => 'textfield',
+      '#size' => 30,
+      '#autocomplete_path' => 'sunflower/autocomplete/category',
+      '#description' => t('Type "*" to list all categories'),
+      '#default_value' => $category_default,
+      '#states' => array(
+        'visible' => array(
+          ':input[name="categories[category_' . $i . '_checkbox]"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+  }
   $form['proposal_details'] = array(
     '#type' => 'fieldset',
     '#collapsed' => FALSE,
@@ -96,6 +119,16 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#title' => t('Full name of Presider'),
     '#description' => t('Who is presiding over this panel, roundtable or workshop?'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['presider_chair'] : '',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
+      ),
+    ),
+  );
+  $form['proposal_details']['presider_email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('E-mail of Presider'),
+    '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['presider_email'] : '',
     '#states' => array(
       'visible' => array(
         ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
@@ -137,7 +170,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     $form['fieldset_' . $i]['presenter_name'] = array(
       '#type' => 'textfield',
       '#title' => t('Name of presenter'),
-      '#autocomplete_path' => 'sunflower/autocomplete',
+      '#autocomplete_path' => 'sunflower/autocomplete/presenter',
       '#description' => t('Type "*" to list all paid members'),
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['presenter_name'] : FALSE,
     );
@@ -154,17 +187,27 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#description' => t('Maximum of 150 words'),
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['abstract'] : FALSE,
     );
-    if ($i > 2 && $i < 5) {
+    if ($i > 2 && $i < 4) {
       $form['fieldset_' . $i]['#states'] = array(
         'visible' => array(
           ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
         ),
       );
     }
+    if ($i == 4) {
+      $form['fieldset_' . $i]['#states'] = array(
+        'visible' => array(
+          ':input[name="proposal_type[proposal_choices]"]' => array(
+            array('value' => 'workshop'),
+            array('value' => 'roundtable'),
+          ),
+        ),
+      );
+    }
     if ($i >= 5 && $i <= 8) {
       $form['fieldset_' . $i]['#states'] = array(
         'visible' => array(
-          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'workshop'),
+          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'roundtable'),
         ),
       );
     }
@@ -206,15 +249,15 @@ function sunflower_proposal_form_validate($form, &$form_state) {
     $type = $form_state['values']['proposal_type']['proposal_choices'];
     $required_presenters = array(
       'individual' => 1,
-      'roundtable' => 3,
-      'panel' => 4,
-      'workshop' => 8,
+      'roundtable' => 5,
+      'panel' => 2,
+      'workshop' => 3,
     );
     $max_presenters = array(
       'individual' => 2,
-      'roundtable' => 4,
-      'panel' => 4,
-      'workshop' => 8,
+      'roundtable' => 8,
+      'panel' => 3,
+      'workshop' => 4,
     );
     $all_presenters = array();
     // Presider and workshop_panel_roundtable title required if not individual.
@@ -224,6 +267,36 @@ function sunflower_proposal_form_validate($form, &$form_state) {
       }
       if (empty($form_state['values']['proposal_details']['presider_chair'])) {
         form_set_error('proposal_details][presider_chair', t('A name is required for the presider of the @type!', array('@type' => $type)));
+      }
+      if (empty($form_state['values']['proposal_details']['presider_email'])) {
+        form_set_error('proposal_details][presider_email', t('An email is required for the presider of the @type!', array('@type' => $type)));
+      }
+    }
+    $category_values = array();
+    // Category checking time.
+    for ($i = 1; $i <= 3; $i++) {
+      $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
+      if ($i == 1 && !$enabled) {
+        form_set_error('categories][category_1_checkbox', t('At least one category is required per proposal!'));
+      }
+
+      if ($enabled) {
+        if (empty($form_state['values']['categories']['category_' . $i . '_textfield'])) {
+          form_set_error('categories][category_' . $i . '_textfield', t('The category for category @num must not be empty!', array('@num' => $i)));
+        }
+        else {
+          $value = $form_state['values']['categories']['category_' . $i . '_textfield'];
+          $existing = array_search($value, $category_values);
+          if ($existing) {
+            form_set_error('categories][category_' . $i . '_textfield', t('The value %value already is entered in category @num!', array(
+              '%value' => $value,
+              '@num' => $existing,
+            )));
+          }
+          else {
+            $category_values[$i] = $value;
+          }
+        }
       }
     }
     $readable_fields = array(
@@ -402,7 +475,6 @@ function sunflower_proposal_form_validate($form, &$form_state) {
         '@num' => $required_presenters[$type],
       )), 'error', FALSE);
     }
-    //form_set_error('herp', 'derp');
   }
 }
 
@@ -417,9 +489,9 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   $presenter_data = array();
   $max_presenters = array(
     'individual' => 2,
-    'roundtable' => 4,
-    'panel' => 4,
-    'workshop' => 8,
+    'roundtable' => 8,
+    'panel' => 3,
+    'workshop' => 4,
   );
   $proposal_data['submitter_uid'] = isset($form_state['values']['submitter_uid']) ? $form_state['values']['submitter_uid'] : $user->uid;
   $proposal_data['last_modified'] = date("Y-m-d H:i:s");
@@ -437,14 +509,24 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   $proposal_data['special_requests'] = $form_state['values']['requests']['special_requests'];
   $proposal_data['av_requests'] = $form_state['values']['requests']['av_requests'];
 
+  // Category checking time.
+  for ($i = 1; $i <= 3; $i++) {
+    $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
+    if ($enabled) {
+      $proposal_data["category_$i"] = $form_state['values']['categories']['category_' . $i . '_textfield'];
+    }
+  }
+
   // If it's not an individual presentation get the title and the chair.
   if ($type != 'individual') {
     $proposal_data['panel_roundtable_workshop_title'] = $form_state['values']['proposal_details']['panel_roundtable_workshop_title'];
     $proposal_data['presider_chair'] = $form_state['values']['proposal_details']['presider_chair'];
+    $proposal_data['presider_email'] = $form_state['values']['proposal_details']['presider_email'];
   }
   else {
     $proposal_data['panel_roundtable_workshop_title'] = '';
     $proposal_data['presider_chair'] = '';
+    $proposal_data['presider_email'] = '';
   }
   $form_state['redirect'] = 'sunflower';
   drupal_set_message(t('The proposal has been submitted!'));
