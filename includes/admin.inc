@@ -6,6 +6,14 @@
 
 /**
  * Admin settings form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   The Drupal form state.
+ *
+ * @return array
+ *   An array representing the Sunflower administration form.
  */
 function sunflower_admin_form($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
@@ -43,6 +51,14 @@ function sunflower_admin_form($form, &$form_state) {
   return $form;
 }
 
+/**
+ * Provides validation for the Sunflower administration form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   The Drupal form state.
+ */
 function sunflower_admin_form_validate($form, $form_state) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
   $start_time = sunflower_date_array_to_time($form_state['values']['start_date']);
@@ -53,12 +69,28 @@ function sunflower_admin_form_validate($form, $form_state) {
   }
 }
 
+/**
+ * Submit handler for the Sunflower administration form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   The Drupal form state.
+ */
 function sunflower_admin_form_submit($form, $form_state) {
   variable_set('sunflower_opening_date', $form_state['values']['start_date']);
   variable_set('sunflower_ending_date', $form_state['values']['end_date']);
   drupal_set_message(t('The configuration has been saved.'));
 }
 
+/**
+ * Submit handler to re-direct to a confirm form before nuking all data.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   The Drupal form state.
+ */
 function sunflower_admin_delete_all_data($form, &$form_state) {
   $form_state['redirect'] = 'admin/sunflower/delete';
 }

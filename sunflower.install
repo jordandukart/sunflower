@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Install file for Sunflower which creates database tables.
+ */
+
+/**
  * Implements hook_schema().
  */
 function sunflower_schema() {

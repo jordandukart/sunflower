@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Module for handling submissions for the CSSR Annual Meeting.
+ */
+
+/**
  * Implements hook_menu().
  */
 function sunflower_menu() {
@@ -85,14 +90,33 @@ function sunflower_permission() {
     'administer sunflower' => array(
       'title' => 'Configure the Sunflower module',
     ),
+    'viewing and modifying sunflower submissions' => array(
+      'title' => "Viewing and modifying others' Sunflower submissions",
+    ),
   );
 }
 
+/**
+ * Utility function to determine if the user can create proposals.
+ *
+ * @return bool
+ *   TRUE if the user can create proposals, FALSE otherwise.
+ */
 function sunflower_proposal_create_access() {
   module_load_include('inc', 'sunflower', 'includes/utilities');
-  return (user_access('administer sunflower')) || (sunflower_is_valid_submitter() && sunflower_is_submission_open());
+  return (user_access('administer sunflower')) || user_access('viewing and modifying sunflower submissions')
+  || (sunflower_is_valid_submitter() && sunflower_is_submission_open());
 }
 
+/**
+ * Utility function to determine if the user can edit proposals.
+ *
+ * @param string $proposal_id
+ *   The proposal ID of the proposal that the user is trying to edit.
+ *
+ * @return bool
+ *   TRUE if the user can create proposals, FALSE otherwise.
+ */
 function sunflower_proposal_edit_access($proposal_id) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
   module_load_include('inc', 'sunflower', 'includes/db');
@@ -102,7 +126,7 @@ function sunflower_proposal_edit_access($proposal_id) {
   if (!$submitter) {
     return FALSE;
   }
-  if (user_access('administer sunflower')) {
+  if (user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions')) {
     return TRUE;
   }
   else {
@@ -110,6 +134,15 @@ function sunflower_proposal_edit_access($proposal_id) {
   }
 }
 
+/**
+ * Utility function to determine if the user can see the summary of a proposal.
+ *
+ * @param string $proposal_id
+ *   The proposal ID of the proposal that the user wants the summary of.
+ *
+ * @return bool
+ *   TRUE if the user can see the summary, FALSE otherwise.
+ */
 function sunflower_proposal_summary_access($proposal_id) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
   module_load_include('inc', 'sunflower', 'includes/db');
@@ -119,7 +152,7 @@ function sunflower_proposal_summary_access($proposal_id) {
   if (!$submitter) {
     return FALSE;
   }
-  if (user_access('administer sunflower')) {
+  if (user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions')) {
     return TRUE;
   }
   else {

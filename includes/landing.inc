@@ -1,11 +1,27 @@
 <?php
 
+/**
+ * @file
+ * Landing page for the Sunflower submission process.
+ */
+
+/**
+ * The landing page form for the Sunflower module.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ *
+ * @return array
+ *   An array representing the landing page form.
+ */
 function sunflower_landing_form($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
   module_load_include('inc', 'sunflower', 'includes/utilities');
 
   if (sunflower_is_valid_submitter() === FALSE) {
-    drupal_set_message(t('Sorry you do not appear to be eligible to submit a proposal! Proposal submission is only available for paid members of the CSSR.'), 'warning');
+    drupal_set_message(t('Sorry you do not appear to be eligible to submit a proposal! Proposal submission is only available for friends or paid members of the CSSR.'), 'warning');
 
   }
   else {
@@ -13,7 +29,7 @@ function sunflower_landing_form($form, &$form_state) {
     $admin = FALSE;
     $rows = array();
 
-    if (user_access('administer sunflower')) {
+    if (user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions')) {
       $admin = TRUE;
       $results = sunflower_retrieve_proposals($user->uid, TRUE);
     }
@@ -26,7 +42,7 @@ function sunflower_landing_form($form, &$form_state) {
           ucwords($row['type']),
           $row['last_modified'],
           t('<a href="@url">summary</a>', array('@url' => url('sunflower/proposal/summary/' . $row['proposal_id']))),
-          (sunflower_is_submission_open()) ?  t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id']))) : '',
+          (sunflower_is_submission_open()) ? t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id']))) : '',
         );
       }
       else {
@@ -36,7 +52,7 @@ function sunflower_landing_form($form, &$form_state) {
           $submitter_user->name,
           $row['last_modified'],
           t('<a href="@url">summary</a>', array('@url' => url('sunflower/proposal/summary/' . $row['proposal_id']))),
-          t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id'])))
+          t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id']))),
         );
       }
     }
@@ -56,7 +72,8 @@ function sunflower_landing_form($form, &$form_state) {
       )),
     );
 
-    if (sunflower_is_submission_open() === FALSE && !user_access('administer sunflower')) {
+    $submission_open = sunflower_is_submission_open();
+    if (!$submission_open && !(user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions'))) {
       $opening_date = variable_get('sunflower_opening_date', '');
       $ending_date = variable_get('sunflower_ending_date', '');
       if (!is_array($opening_date) || !is_array($ending_date)) {
@@ -77,15 +94,27 @@ function sunflower_landing_form($form, &$form_state) {
       }
     }
     else {
-      if (user_access('administer sunflower') || (!user_access('adminisiter sunflower') && count($rows) < 2)) {
+      if ($submission_open) {
+        $ending_date = variable_get('sunflower_ending_date', '');
+        $ending_string = $ending_date['year'] . '-' . $ending_date['month'] . '-' . $ending_date['day'];
+        drupal_set_message(t('Sunflower submissions are currently open and set to close on @end!', array('@end' => $ending_string)));
+      }
+      if ((user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions'))
+        || (!(user_access('adminisiter sunflower') || user_access('viewing and modifying sunflower submissions')) && count($rows) < 2)) {
         $form['proposal_submit'] = array(
           '#name' => 'sunflower_proposal_submit',
           '#type' => 'submit',
           '#value' => t('Submit a new proposal'),
         );
         $form['proposal_csv_export'] = array(
+          '#name' => 'sunflower_proposal_csv_submit',
           '#type' => 'submit',
           '#value' => t('Export proposals'),
+        );
+        $form['membership_export'] = array(
+          '#name' => 'sunflower_membership_csv_submit',
+          '#type' => 'submit',
+          '#value' => t('Export membership information'),
         );
       }
     }
@@ -93,16 +122,30 @@ function sunflower_landing_form($form, &$form_state) {
   return $form;
 }
 
+/**
+ * Submit handler for the Sunflower landing page form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ */
 function sunflower_landing_form_submit($form, &$form_state) {
   if ($form_state['clicked_button']['#name'] == 'sunflower_proposal_submit') {
     $form_state['redirect'] = 'sunflower/proposal/create';
   }
+  elseif ($form_state['clicked_button']['#name'] == 'sunflower_proposal_csv_submit') {
+    sunflower_proposal_export_as_csv();
+  }
   else {
-    sunflower_export_as_csv();
+    sunflower_membership_export_as_csv();
   }
 }
 
-function sunflower_export_as_csv() {
+/**
+ * Exports all proposals in Sunflower in CSV format.
+ */
+function sunflower_proposal_export_as_csv() {
   global $user;
   module_load_include('inc', 'sunflower', 'includes/db');
   $db_data = sunflower_retrieve_proposals($user, TRUE);
@@ -182,7 +225,7 @@ function sunflower_export_as_csv() {
   drupal_add_http_header('Content-Disposition', 'attachment;filename=sunflower_proposal_export.csv');
 
   $fp = fopen('php://output', 'w');
-   fputcsv($fp, array(
+  fputcsv($fp, array(
     t('ID'),
     t('Type'),
     t('Submitted by'),
@@ -234,4 +277,65 @@ function sunflower_export_as_csv() {
   drupal_exit();
 }
 
+/**
+ * Exports all members currently in Sunflower proposals in CSV format.
+ */
+function sunflower_membership_export_as_csv() {
+  module_load_include('inc', 'sunflower', 'includes/db');
+  $members = sunflower_retrieve_presenters_membership_status();
+  $csv_array = array();
+  foreach ($members as $member) {
+    $member_user = user_load($member['entity_id']);
+    $member_email = $member_user->mail;
+    switch ($member['field_membership_type_value']) {
+      case 'friend':
+        $membership_type = 'Friend of CSSR';
+        break;
 
+      case 'student':
+        $membership_type = 'Paid Student member';
+        break;
+
+      case 'associate':
+        $membership_type = 'Paid Associate member';
+        break;
+
+      case 'regular':
+        $membership_type = 'Paid Regular member';
+        break;
+
+      case 'associate_student':
+        $membership_type = 'Paid Associate Student member';
+        break;
+
+      case 'other':
+        $membership_type = 'Paid Other member';
+        break;
+
+      default:
+        $membership_type = 'N/A';
+        break;
+    }
+    $csv_array[] = array(
+      $member['presenter_name'],
+      $member_email,
+      $membership_type,
+      $member['proposal_ids'],
+    );
+  }
+  // Send response headers to the browser.
+  drupal_add_http_header('Content-Type', 'text/csv');
+  drupal_add_http_header('Content-Disposition', 'attachment;filename=sunflower_membership_export.csv');
+  $fp = fopen('php://output', 'w');
+  fputcsv($fp, array(
+    t('Presenter Name'),
+    t('Presenter E-mail'),
+    t('Membership Status'),
+    t('Proposal IDs'),
+  ));
+  foreach ($csv_array as $line) {
+    fputcsv($fp, $line);
+  }
+  fclose($fp);
+  drupal_exit();
+}

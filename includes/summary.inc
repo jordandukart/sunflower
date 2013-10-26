@@ -1,5 +1,23 @@
 <?php
 
+/**
+ * @file
+ * Creates and renders the summary form for viewing submissions in Sunflower.
+ */
+
+/**
+ * The summary form for viewing submissions in the Sunflower module.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ * @param string $proposal_id
+ *   The ID of the proposal we want a summary of.
+ *
+ * @return array
+ *   An array representing the proposal form.
+ */
 function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
   module_load_include('inc', 'sunflower', 'includes/db');
   $db_data = sunflower_retrieve_data($proposal_id);
@@ -27,6 +45,41 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       '#type' => 'item',
       '#title' => t('Presider'),
       '#markup' => t('@presider', array('@presider' => $db_data['proposal']['presider_chair'])),
+    );
+  }
+  if (!empty($db_data['proposal']['presider_email'])) {
+    $form['fieldset']['presider_email'] = array(
+      '#type' => 'item',
+      '#title' => t('Presider E-mail'),
+      '#markup' => t('@email', array('@email' => $db_data['proposal']['presider_email'])),
+    );
+  }
+  if (!empty($db_data['proposal']['category_1'])) {
+    $form['categories'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Categories'),
+      '#collapsed' => FALSE,
+      '#collapsible' => FALSE,
+      '#weight' => '19',
+    );
+    $form['categories']['category_1'] = array(
+      '#type' => 'item',
+      '#title' => t('Category 1'),
+      '#markup' => t('@category', array('@category' => $db_data['proposal']['category_1'])),
+    );
+  }
+  if (!empty($db_data['proposal']['category_2'])) {
+    $form['categories']['category_2'] = array(
+      '#type' => 'item',
+      '#title' => t('Category 2'),
+      '#markup' => t('@category', array('@category' => $db_data['proposal']['category_2'])),
+    );
+  }
+  if (!empty($db_data['proposal']['category_3'])) {
+    $form['categories']['category_3'] = array(
+      '#type' => 'item',
+      '#title' => t('Category 3'),
+      '#markup' => t('@category', array('@category' => $db_data['proposal']['category_3'])),
     );
   }
   if (!empty($db_data['proposal']['special_requests']) || !empty($db_data['proposal']['av_requests'])) {

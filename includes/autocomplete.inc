@@ -6,6 +6,9 @@
 
 /**
  * Callback that performs autocomplete operations.
+ *
+ * @param string $user_string
+ *   The string that the user entered in the presenter autocomplete field.
  */
 function sunflower_presenter_autocomplete($user_string) {
   module_load_include('inc', 'sunflower', 'includes/db');
@@ -27,6 +30,9 @@ function sunflower_presenter_autocomplete($user_string) {
 
 /**
  * Callback that performs autocomplete operations.
+ *
+ * @param string $user_string
+ *   The string that the user entered in the categories autocomplete field.
  */
 function sunflower_categories_autocomplete($user_string) {
   $output = array();
@@ -147,7 +153,7 @@ function sunflower_categories_autocomplete($user_string) {
     t('Spiritual Life'),
     t('Spiritual Life / Christian'),
     t('Study of Religion and Mythology'),
-    t('Systematic Theology - Christian '),
+    t('Systematic Theology - Christian'),
     t('Tablets / Ostraca / Inscriptions / Papyri'),
     t('Taoism'),
     t('Technology'),
@@ -157,7 +163,7 @@ function sunflower_categories_autocomplete($user_string) {
     t("Women’s Histories"),
     t("Women’s Religious Thought"),
     t("Women’s Theologies - Christian"),
- );
+  );
   foreach ($categories as $value) {
     if ($user_string != '*') {
       if (strpos(drupal_strtoupper($value), drupal_strtoupper($user_string)) !== FALSE) {

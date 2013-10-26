@@ -1,5 +1,23 @@
 <?php
 
+/**
+ * @file
+ * Creates and handles the proposal form used for submissions in Sunflower.
+ */
+
+/**
+ * The proposal form for the Sunflower module.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ * @param bool $edit_submission
+ *   Whether the proposal is being edited, or if it's a new submission.
+ *
+ * @return array
+ *   An array representing the proposal form.
+ */
 function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
   module_load_include('inc', 'sunflower', 'includes/db');
@@ -153,7 +171,6 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['av_requests'] : '',
   );
 
-
   for ($i = 1; $i <= 8; $i++) {
     $default_presenter_value = FALSE;
     if (isset($db_data['presenters'])) {
@@ -237,11 +254,27 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   return $form;
 }
 
+/**
+ * Submit handler to re-direct to a confirm form before nuking a proposal.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ */
 function sunflower_proposal_delete($form, &$form_state) {
   $proposal_id = $form_state['values']['proposal_id'];
   $form_state['redirect'] = "sunflower/proposal/delete/$proposal_id";
 }
 
+/**
+ * Performs validation for the Sunflower proposal form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ */
 function sunflower_proposal_form_validate($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
 
@@ -478,6 +511,14 @@ function sunflower_proposal_form_validate($form, &$form_state) {
   }
 }
 
+/**
+ * Submit handler for the Sunflower proposal form.
+ *
+ * @param array $form
+ *   An array representing a Drupal form.
+ * @param array $form_state
+ *   An array containing the Drupal form state.
+ */
 function sunflower_proposal_form_submit($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
   global $user;

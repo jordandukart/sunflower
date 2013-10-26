@@ -1,11 +1,21 @@
 <?php
 
-
 /**
  * @file
  * Database utility functions for Sunflower.
  */
 
+/**
+ * Retrieves proposals used on the landing page.
+ *
+ * @param string $user
+ *   The UID of the person we are retrieving proposals for.
+ * @param bool $all
+ *   Whether we are displaying all proposals (used for admins).
+ *
+ * @return array
+ *   An array containing the proposal results from the database.
+ */
 function sunflower_retrieve_proposals($user, $all = FALSE) {
   if (!$all) {
     return db_select('sunflower_proposals', 'p')
@@ -17,13 +27,27 @@ function sunflower_retrieve_proposals($user, $all = FALSE) {
   }
   else {
     return db_select('sunflower_proposals', 'p')
-      ->fields('p', array('proposal_id', 'last_modified', 'submitter_uid', 'type'))
+      ->fields('p', array(
+        'proposal_id',
+        'last_modified',
+        'submitter_uid',
+        'type',
+       ))
       ->orderBy('last_modified', 'DESC')
       ->execute()
       ->fetchAllAssoc('proposal_id', PDO::FETCH_ASSOC);
   }
 }
 
+/**
+ * Returns the submitter of the specified proposal.
+ *
+ * @param string $proposal_id
+ *   The ID of the proposal we want the submitter of.
+ *
+ * @return string
+ *   The submitter UID for the proposal.
+ */
 function sunflower_retrieve_submitter_uid($proposal_id) {
   return db_select('sunflower_proposals', 'p')
     ->fields('p', array('submitter_uid'))
@@ -32,6 +56,16 @@ function sunflower_retrieve_submitter_uid($proposal_id) {
     ->fetchField();
 }
 
+/**
+ * Inserts data into the database on submission.
+ *
+ * @param array $proposal_data
+ *   An array containing all the fields for the proposal table.
+ * @param array $presenter_data
+ *   An array containing all the fields for the presenter table.
+ * @param string $proposal_id
+ *   The proposal ID if the submission is being edited, empty for a new one.
+ */
 function sunflower_insert_data(array $proposal_data, array $presenter_data, $proposal_id) {
   if (!$proposal_id) {
     $proposal_id = db_insert('sunflower_proposals')
@@ -63,6 +97,15 @@ function sunflower_insert_data(array $proposal_data, array $presenter_data, $pro
   }
 }
 
+/**
+ * Retrieves all database data for one proposal.
+ *
+ * @param string $proposal_id
+ *   The proposal ID we want data about.
+ *
+ * @return array
+ *   An array containing all the database values for the proposal.
+ */
 function sunflower_retrieve_data($proposal_id) {
   $data = array();
   $data['presenters'] = db_select('sunflower_presenters', 'p')
@@ -78,6 +121,12 @@ function sunflower_retrieve_data($proposal_id) {
   return $data;
 }
 
+/**
+ * Deletes an individual proposal from the database.
+ *
+ * @param string $proposal_id
+ *   The proposal ID which we are deleting.
+ */
 function sunflower_delete_proposal($proposal_id) {
   db_delete('sunflower_proposals')
     ->condition('proposal_id', $proposal_id)
@@ -87,6 +136,9 @@ function sunflower_delete_proposal($proposal_id) {
     ->execute();
 }
 
+/**
+ * Deletes all proposals out of the database.
+ */
 function sunflower_delete_all_proposals() {
   db_delete('sunflower_proposals')
     ->execute();
@@ -94,6 +146,15 @@ function sunflower_delete_all_proposals() {
     ->execute();
 }
 
+/**
+ * Retrieves all valid members for autocomplete purposes.
+ *
+ * Note: That this is used to include a condition of type not being friends.
+ * This requirement was changed but could be added back in in the future.
+ *
+ * @return array
+ *   An array containing all valid members.
+ */
 function sunflower_retrieve_all_paid_members() {
   $query = db_select('field_data_field_membership_type', 'f');
   $query->join('field_data_field_first_name', 'n', 'n.entity_id = f.entity_id');
@@ -101,12 +162,20 @@ function sunflower_retrieve_all_paid_members() {
   $query->fields('n', array('field_first_name_value'))
     ->fields('l', array('field_last_name_value'))
     ->fields('f', array('entity_id'))
-    ->condition('field_membership_type_value', 'friend', '!=')
     ->orderBy('l.field_last_name_value', 'ASC');
   $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
   return $results;
 }
 
+/**
+ * Determines whether a given member is valid to be used in a proposal or not.
+ *
+ * @param string $full_name
+ *   The full name of the presenter we are validating.
+ *
+ * @return bool
+ *   TRUE if they can be added to a proposal, FALSE otherwise.
+ */
 function sunflower_validate_presenter_paid_and_exists($full_name) {
   $query = db_select('field_data_field_first_name', 'n');
   $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
@@ -125,6 +194,15 @@ function sunflower_validate_presenter_paid_and_exists($full_name) {
   return $valid_presenter;
 }
 
+/**
+ * Takes a full name and grabs the entity_id for it.
+ *
+ * @param string $full_name
+ *   The full name of the presenter we want to get the entity_id for.
+ *
+ * @return int
+ *   The entity_id of the presenter.
+ */
 function sunflower_retrieve_entity_id_from_full_name($full_name) {
   $query = db_select('field_data_field_first_name', 'n');
   $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
@@ -141,6 +219,24 @@ function sunflower_retrieve_entity_id_from_full_name($full_name) {
   }
   return (int) $entity_id;
 }
+
+/**
+ * Validates that a presenter based upon rules given by CSSR.
+ *
+ * A presenter can only be in two total submissions. They also can not exist in
+ * a panel and an individual proposal concurrently.
+ *
+ * @param string $full_name
+ *   The full name of the presenter we are validating.
+ * @param string $type
+ *   The type of proposal which is currently trying to be submitted.
+ *
+ * @return array|bool
+ *   FALSE if the user does not exist in the database, an array describing the
+ *   outcome otherwise:
+ *     -valid: Whether the presenter is valid for additional submissions,
+ *     -type (Optional): The reason as to why the presenter is not valid.
+ */
 function sunflower_validate_proposal_amount($full_name, $type) {
   $entity_id = sunflower_retrieve_entity_id_from_full_name($full_name);
   if ($entity_id) {
@@ -178,4 +274,29 @@ function sunflower_validate_proposal_amount($full_name, $type) {
     }
   }
   return FALSE;
+}
+
+/**
+ * Retrieves all members currently in proposals and their membership status.
+ *
+ * @return array
+ *   Returns an array of members containing:
+ *     -entity_id: The entity_id of the member.
+ *     -presenter_name: The name of the presenter.
+ *     -proposal_ids: The IDs of the proposals that the member exists in.
+ */
+function sunflower_retrieve_presenters_membership_status() {
+  $query = db_select('sunflower_presenters', 's');
+  $query->join('field_data_field_membership_type', 'f', 's.entity_id = f.entity_id');
+  $query->fields('s', array('presenter_name', 'entity_id'))
+    ->fields('f', array('field_membership_type_value'));
+  $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+  foreach ($results as &$result) {
+    $proposal_query = db_select('sunflower_presenters', 's');
+    $proposal_query->fields('s', array('proposal_id'))
+      ->condition('entity_id', $result['entity_id'], '=');
+    $proposal_results = $proposal_query->execute()->fetchCol();
+    $result['proposal_ids'] = implode(', ', $proposal_results);
+  }
+  return $results;
 }

@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * @file
+ * Holds general utility functions used in Sunflower.
+ */
+
+/**
+ * Determines whether the current user is a valid submitter within Sunflower.
+ *
+ * @return bool
+ *   TRUE if the user can submit, FALSE otherwise.
+ */
 function sunflower_is_valid_submitter() {
   global $user;
   $user_type = db_select('field_data_field_membership_type', 'f')
@@ -7,7 +18,10 @@ function sunflower_is_valid_submitter() {
     ->condition('f.entity_id', $user->uid, '=')
     ->execute()
     ->fetchCol();
-  if (count($user_type) && $user_type[0] != 'friend') {
+  // The user exists in some facet in the database.
+  // NOTE: This used to have a check to make sure the $user_type wasn't a friend
+  // of the CSSR. This changed as per requirements.
+  if (count($user_type)) {
     return TRUE;
   }
   else {
@@ -15,6 +29,12 @@ function sunflower_is_valid_submitter() {
   }
 }
 
+/**
+ * Determines whether submissions to Sunflower are currently open.
+ *
+ * @return bool
+ *   TRUE if Sunflower is accepted submissions, FALSE otherwise.
+ */
 function sunflower_is_submission_open() {
   $current_date_string = date('Y-m-d');
   $current_time = strtotime($current_date_string);
@@ -36,6 +56,18 @@ function sunflower_is_submission_open() {
   }
 }
 
+/**
+ * Utility function to take a date array and convert to a timestamp.
+ *
+ * @param array $date
+ *   An array in Drupal's date form that contains:
+ *     -year: The year.
+ *     -month: The month.
+ *     -day: The day.
+ *
+ * @return int
+ *   A timestamp used for date comparisons.
+ */
 function sunflower_date_array_to_time(array $date) {
   $date_string = $date['year'] . '-' . $date['month'] . '-' . $date['day'];
   return strtotime($date_string);
