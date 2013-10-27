@@ -188,7 +188,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#type' => 'textfield',
       '#title' => t('Name of presenter'),
       '#autocomplete_path' => 'sunflower/autocomplete/presenter',
-      '#description' => t('Type "*" to list all paid members'),
+      '#description' => variable_get('sunflower_enforce_paid_memberships', FALSE) ? t('Type "*" to list all paid members') : t('Type "*" to list all members'),
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['presenter_name'] : FALSE,
     );
     $form['fieldset_' . $i]['paper_title'] = array(
@@ -277,7 +277,6 @@ function sunflower_proposal_delete($form, &$form_state) {
  */
 function sunflower_proposal_form_validate($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/db');
-
   if ($form_state['clicked_button']['#name'] == 'sunflower_proposal_submit') {
     $type = $form_state['values']['proposal_type']['proposal_choices'];
     $required_presenters = array(
@@ -351,15 +350,23 @@ function sunflower_proposal_form_validate($form, &$form_state) {
         }
         elseif ($field == 'presenter_name') {
           // Go make sure who they entered is in the database.
-          $valid = sunflower_validate_presenter_paid_and_exists($value);
+          $paid_enforcement = variable_get('sunflower_enforce_paid_memberships', FALSE);
+          if ($paid_enforcement) {
+            $valid = sunflower_validate_presenter_paid_and_exists($value);
+          }
+          else {
+            $valid = sunflower_validate_presenter_exists($value);
+          }
           if (!$valid) {
-            form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
+            form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database @paid for presenter @num!', array(
             '%presenter' => $value,
+            '@paid' => $paid_enforcement ? t('or is not a paid member') : '',
             '@num' => $i,
             )));
           }
           else {
-            $validity = sunflower_validate_proposal_amount($value, $type);
+            $proposal_id = isset($form_state['values']['proposal_id']) ? $form_state['values']['proposal_id'] : NULL;
+            $validity = sunflower_validate_proposal_amount($value, $type, $proposal_id);
             if ($validity['valid'] === FALSE) {
               if ($validity['type'] == 'same') {
                 form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal!', array(
@@ -381,7 +388,7 @@ function sunflower_proposal_form_validate($form, &$form_state) {
                 else {
                   $restrict = 'individual';
                 }
-                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
+                form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @restrict proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
                   '%presenter' => $value,
                   '@num' => $i,
                   '@type' => $type,
@@ -437,15 +444,23 @@ function sunflower_proposal_form_validate($form, &$form_state) {
           }
           elseif ($field == 'presenter_name') {
             // Go make sure who they entered is in the database.
-            $valid = sunflower_validate_presenter_paid_and_exists($value);
+            $paid_enforcement = variable_get('sunflower_enforce_paid_memberships', FALSE);
+            if ($paid_enforcement) {
+              $valid = sunflower_validate_presenter_paid_and_exists($value);
+            }
+            else {
+              $valid = sunflower_validate_presenter_exists($value);
+            }
             if (!$valid) {
-              form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database or is not a paid member for presenter @num!', array(
+              form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter does not exist in our database @paid for presenter @num!', array(
                 '%presenter' => $value,
+                '@paid' => $paid_enforcement ? t('or is not a paid member') : '',
                 '@num' => $i,
               )));
             }
             else {
-              $validity = sunflower_validate_proposal_amount($value, $type);
+              $proposal_id = isset($form_state['values']['proposal_id']) ? $form_state['values']['proposal_id'] : NULL;
+              $validity = sunflower_validate_proposal_amount($value, $type, $proposal_id);
               if ($validity['valid'] === FALSE) {
                 if ($validity['type'] == 'same') {
                   form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal!', array(
@@ -467,7 +482,7 @@ function sunflower_proposal_form_validate($form, &$form_state) {
                   else {
                     $restrict = 'individual';
                   }
-                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @type proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
+                  form_set_error("fieldset_$i][$field", t('The presenter by the name of %presenter in presenter @num already exists in a @restrict proposal! Members may not be a part of a @type and a @restrict proposal at the same time!', array(
                     '%presenter' => $value,
                     '@num' => $i,
                     '@type' => $type,

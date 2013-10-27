@@ -12,9 +12,15 @@
  */
 function sunflower_presenter_autocomplete($user_string) {
   module_load_include('inc', 'sunflower', 'includes/db');
-  $all_paid = sunflower_retrieve_all_paid_members();
+  $paid_enforcement = variable_get('sunflower_enforce_paid_memberships', FALSE);
+  if (!$paid_enforcement) {
+    $users = sunflower_retrieve_all_users();
+  }
+  else {
+    $users = sunflower_retrieve_all_paid_members();
+  }
   $output = array();
-  foreach ($all_paid as $value) {
+  foreach ($users as $value) {
     $full_name = ucwords($value['field_first_name_value'] . ' ' . $value['field_last_name_value']);
     if ($user_string != '*') {
       if (strpos(drupal_strtoupper($full_name), drupal_strtoupper($user_string)) !== FALSE) {

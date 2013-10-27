@@ -79,6 +79,14 @@ function sunflower_menu() {
     'access arguments' => array(3),
     'file' => 'includes/summary.inc',
   );
+  $items['sunflower/proposal/print/%'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'sunflower_printable_pdf',
+    'page arguments' => array(3),
+    'access callback' => 'sunflower_proposal_summary_access',
+    'access arguments' => array(3),
+    'file' => 'includes/pdf.inc',
+  );
   return $items;
 }
 

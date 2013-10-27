@@ -147,10 +147,7 @@ function sunflower_delete_all_proposals() {
 }
 
 /**
- * Retrieves all valid members for autocomplete purposes.
- *
- * Note: That this is used to include a condition of type not being friends.
- * This requirement was changed but could be added back in in the future.
+ * Retrieves all valid paid members for autocomplete purposes.
  *
  * @return array
  *   An array containing all valid members.
@@ -162,6 +159,23 @@ function sunflower_retrieve_all_paid_members() {
   $query->fields('n', array('field_first_name_value'))
     ->fields('l', array('field_last_name_value'))
     ->fields('f', array('entity_id'))
+    ->condition('field_membership_type_value', 'friend', '!=')
+    ->orderBy('l.field_last_name_value', 'ASC');
+  $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+  return $results;
+}
+
+/**
+ * Retrieves all users for autocomplete purposes.
+ *
+ * @return array
+ *   An array containing all users members.
+ */
+function sunflower_retrieve_all_users() {
+  $query = db_select('field_data_field_first_name', 'n');
+  $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
+  $query->fields('n', array('field_first_name_value', 'entity_id'))
+    ->fields('l', array('field_last_name_value'))
     ->orderBy('l.field_last_name_value', 'ASC');
   $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
   return $results;
@@ -177,10 +191,12 @@ function sunflower_retrieve_all_paid_members() {
  *   TRUE if they can be added to a proposal, FALSE otherwise.
  */
 function sunflower_validate_presenter_paid_and_exists($full_name) {
-  $query = db_select('field_data_field_first_name', 'n');
+  $query = db_select('field_data_field_membership_type', 'f');
+  $query->join('field_data_field_first_name', 'n', 'n.entity_id = f.entity_id');
   $query->join('field_data_field_last_name', 'l', 'l.entity_id = n.entity_id');
   $query->fields('n', array('field_first_name_value', 'entity_id'))
-    ->fields('l', array('field_last_name_value'));
+    ->fields('l', array('field_last_name_value'))
+    ->condition('field_membership_type_value', 'friend', '!=');
   $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
   $valid_presenter = FALSE;
   foreach ($results as $result) {
@@ -189,7 +205,28 @@ function sunflower_validate_presenter_paid_and_exists($full_name) {
       $valid_presenter = TRUE;
       break;
     }
+  }
+  return $valid_presenter;
+}
 
+/**
+ * Determines whether a given member is valid to be used in a proposal or not.
+ *
+ * @param string $full_name
+ *   The full name of the presenter we are validating.
+ *
+ * @return bool
+ *   TRUE if they can be added to a proposal, FALSE otherwise.
+ */
+function sunflower_validate_presenter_exists($full_name) {
+  $results = sunflower_retrieve_all_users();
+  $valid_presenter = FALSE;
+  foreach ($results as $result) {
+    $full_db_string = ucwords($result['field_first_name_value'] . ' ' . $result['field_last_name_value']);
+    if ($full_db_string === $full_name) {
+      $valid_presenter = TRUE;
+      break;
+    }
   }
   return $valid_presenter;
 }
@@ -230,6 +267,9 @@ function sunflower_retrieve_entity_id_from_full_name($full_name) {
  *   The full name of the presenter we are validating.
  * @param string $type
  *   The type of proposal which is currently trying to be submitted.
+ * @param NULL|string $proposal_id
+ *   What proposal ID this is being validated from. Occurs when editing to
+ *   handle an edge case described below.
  *
  * @return array|bool
  *   FALSE if the user does not exist in the database, an array describing the
@@ -237,23 +277,42 @@ function sunflower_retrieve_entity_id_from_full_name($full_name) {
  *     -valid: Whether the presenter is valid for additional submissions,
  *     -type (Optional): The reason as to why the presenter is not valid.
  */
-function sunflower_validate_proposal_amount($full_name, $type) {
+function sunflower_validate_proposal_amount($full_name, $type, $proposal_id = NULL) {
   $entity_id = sunflower_retrieve_entity_id_from_full_name($full_name);
   if ($entity_id) {
     $query = db_select('sunflower_presenters', 's');
     $query->join('sunflower_proposals', 'p', 's.proposal_id = p.proposal_id');
-    $query->fields('p', array('type'));
+    $query->fields('p', array('type', 'proposal_id'));
     $query->condition('entity_id', $entity_id, '=');
-    $results = $query->execute()->fetchCol();
-    if (count($results) == 2) {
+    if ($proposal_id) {
+      $query->condition('type', $type, '!=');
+    }
+    $results = $query->execute()->fetchAllAssoc('proposal_id', PDO::FETCH_ASSOC);;
+
+    $result_types = array();
+    $presenter_proposal_amount = count($results);
+    foreach ($results as $result) {
+      $result_types[] = $result['type'];
+    }
+    // Need to check if the proposal_id is set such that if a user is editing
+    // a submission we do not flag an existing user as being invalid.
+    if ($proposal_id) {
+      foreach ($results as $result) {
+        if ($result['proposal_id'] == $proposal_id) {
+          $presenter_proposal_amount--;
+          break;
+        }
+      }
+    }
+    if ($presenter_proposal_amount == 2) {
       return array(
         'valid' => FALSE,
         'type' => 'two',
       );
     }
     elseif ($type == 'individual' || $type == 'panel') {
-      if (array_intersect(array('individual', 'panel'), $results)) {
-        if (in_array($type, $results)) {
+      if (array_intersect(array('individual', 'panel'), $result_types)) {
+        if (in_array($type, $result_types)) {
           return array(
             'valid' => FALSE,
             'type' => 'same',
@@ -286,11 +345,35 @@ function sunflower_validate_proposal_amount($full_name, $type) {
  *     -proposal_ids: The IDs of the proposals that the member exists in.
  */
 function sunflower_retrieve_presenters_membership_status() {
+  $paid_enforcement = variable_get('sunflower_enforce_paid_memberships', FALSE);
+
   $query = db_select('sunflower_presenters', 's');
   $query->join('field_data_field_membership_type', 'f', 's.entity_id = f.entity_id');
   $query->fields('s', array('presenter_name', 'entity_id'))
     ->fields('f', array('field_membership_type_value'));
   $results = $query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+
+  // If we aren't enforcing paid memberships there could be presenters that do
+  // not exist in the field_data_field_membership_type table because they do
+  // not have a value. So let's force them into our results.
+  if (!$paid_enforcement) {
+    $presenter_query = db_select('sunflower_presenters', 's');
+    $db_and = db_and();
+    foreach (array_keys($results) as $entity_id) {
+      $db_and->condition('entity_id', $entity_id, '!=');
+    }
+    // We have some NULL values in the database depending on the amount of
+    // presenters per proposals so we don't want to return these.
+    $db_and->condition('entity_id', '0', '!=');
+    $presenter_query->fields('s', array('presenter_name', 'entity_id'))
+      ->condition($db_and);
+    $presenter_results = $presenter_query->execute()->fetchAllAssoc('entity_id', PDO::FETCH_ASSOC);
+    foreach ($presenter_results as $presenter) {
+      $results[$presenter['entity_id']] = $presenter;
+      $results[$presenter['entity_id']]['field_membership_type_value'] = t('N/A');
+    }
+  }
+
   foreach ($results as &$result) {
     $proposal_query = db_select('sunflower_presenters', 's');
     $proposal_query->fields('s', array('proposal_id'))

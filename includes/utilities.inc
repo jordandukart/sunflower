@@ -13,19 +13,25 @@
  */
 function sunflower_is_valid_submitter() {
   global $user;
-  $user_type = db_select('field_data_field_membership_type', 'f')
-    ->fields('f', array('field_membership_type_value'))
-    ->condition('f.entity_id', $user->uid, '=')
-    ->execute()
-    ->fetchCol();
-  // The user exists in some facet in the database.
-  // NOTE: This used to have a check to make sure the $user_type wasn't a friend
-  // of the CSSR. This changed as per requirements.
-  if (count($user_type)) {
-    return TRUE;
+  $paid_enforcement = variable_get('sunflower_enforce_paid_memberships', FALSE);
+  if ($paid_enforcement) {
+    $user_type = db_select('field_data_field_membership_type', 'f')
+      ->fields('f', array('field_membership_type_value'))
+      ->condition('f.entity_id', $user->uid, '=')
+      ->execute()
+      ->fetchCol();
+    // The user exists in some facet in the database and is a paid member.
+    if (count($user_type) && $user_type[0] != 'friend') {
+      return TRUE;
+    }
+    else {
+      return FALSE;
+    }
   }
+  // We aren't enforcing any sort of paid restrictions, any authenticated user
+  // can submit proposals.
   else {
-    return FALSE;
+    return user_is_logged_in();
   }
 }
 

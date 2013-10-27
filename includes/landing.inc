@@ -21,7 +21,9 @@ function sunflower_landing_form($form, &$form_state) {
   module_load_include('inc', 'sunflower', 'includes/utilities');
 
   if (sunflower_is_valid_submitter() === FALSE) {
-    drupal_set_message(t('Sorry you do not appear to be eligible to submit a proposal! Proposal submission is only available for friends or paid members of the CSSR.'), 'warning');
+    drupal_set_message(t('Sorry you do not appear to be eligible to submit a proposal! @error', array(
+      '@error' => variable_get('sunflower_enforce_paid_memberships', FALSE) ? 'Proposal submission is only available for paid members of the CSSR.' : '',
+    )), 'warning');
 
   }
   else {
@@ -42,6 +44,7 @@ function sunflower_landing_form($form, &$form_state) {
           ucwords($row['type']),
           $row['last_modified'],
           t('<a href="@url">summary</a>', array('@url' => url('sunflower/proposal/summary/' . $row['proposal_id']))),
+          t('<a href="@url">pdf</a>', array('@url' => url('sunflower/proposal/print/' . $row['proposal_id']))),
           (sunflower_is_submission_open()) ? t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id']))) : '',
         );
       }
@@ -52,6 +55,7 @@ function sunflower_landing_form($form, &$form_state) {
           $submitter_user->name,
           $row['last_modified'],
           t('<a href="@url">summary</a>', array('@url' => url('sunflower/proposal/summary/' . $row['proposal_id']))),
+          t('<a href="@url">pdf</a>', array('@url' => url('sunflower/proposal/print/' . $row['proposal_id']))),
           t('<a href="@url">edit</a>', array('@url' => url('sunflower/proposal/edit/' . $row['proposal_id']))),
         );
       }
@@ -62,7 +66,7 @@ function sunflower_landing_form($form, &$form_state) {
       $header[] = array('data' => t('Submitter'));
     }
     $header[] = array('data' => t('Last modified date'));
-    $header[] = array('data' => t('Operations'), 'colspan' => '2');
+    $header[] = array('data' => t('Operations'), 'colspan' => '3');
 
     $form['proposal_table'] = array(
       '#markup' => theme('table', array(
@@ -97,15 +101,17 @@ function sunflower_landing_form($form, &$form_state) {
       if ($submission_open) {
         $ending_date = variable_get('sunflower_ending_date', '');
         $ending_string = $ending_date['year'] . '-' . $ending_date['month'] . '-' . $ending_date['day'];
-        drupal_set_message(t('Sunflower submissions are currently open and set to close on @end!', array('@end' => $ending_string)));
+        drupal_set_message(t('Sunflower submissions are currently open and are set to close on @end!', array('@end' => $ending_string)));
       }
       if ((user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions'))
-        || (!(user_access('adminisiter sunflower') || user_access('viewing and modifying sunflower submissions')) && count($rows) < 2)) {
+        || (!(user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions')) && count($rows) < 2)) {
         $form['proposal_submit'] = array(
           '#name' => 'sunflower_proposal_submit',
           '#type' => 'submit',
           '#value' => t('Submit a new proposal'),
         );
+      }
+      if (user_access('administer sunflower') || user_access('viewing and modifying sunflower submissions')) {
         $form['proposal_csv_export'] = array(
           '#name' => 'sunflower_proposal_csv_submit',
           '#type' => 'submit',

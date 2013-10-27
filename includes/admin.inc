@@ -39,6 +39,12 @@ function sunflower_admin_form($form, &$form_state) {
     '#description' => t('Ending date to accept proposals'),
     '#default_value' => $end_date,
   );
+  $form['paid_check'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enforce paid membership?'),
+    '#description' => t('This will enforce paid membership checks in Sunflower submissions. Note this will only effect new submissions.'),
+    '#default_value' => variable_get('sunflower_enforce_paid_memberships', FALSE),
+  );
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
@@ -80,6 +86,13 @@ function sunflower_admin_form_validate($form, $form_state) {
 function sunflower_admin_form_submit($form, $form_state) {
   variable_set('sunflower_opening_date', $form_state['values']['start_date']);
   variable_set('sunflower_ending_date', $form_state['values']['end_date']);
+  if ($form_state['values']['paid_check'] === 0) {
+    $enforce_paid = FALSE;
+  }
+  else {
+    $enforce_paid = TRUE;
+  }
+  variable_set('sunflower_enforce_paid_memberships', $enforce_paid);
   drupal_set_message(t('The configuration has been saved.'));
 }
 
