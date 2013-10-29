@@ -40,7 +40,7 @@ function sunflower_schema() {
         'description' => 'The first category the proposal falls into',
         'type' => 'varchar',
         'length' => 255,
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'category_2' => array(
         'description' => 'The second category the proposal falls into',

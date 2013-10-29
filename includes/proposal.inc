@@ -80,6 +80,11 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#weight' => 123,
     '#title' => t('Categories'),
     '#description' => t('Indicate three broad thematic groups which your proposal might fall under'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'individual'),
+      ),
+    ),
   );
   for ($i = 1; $i <= 3; $i++) {
     $enabled = FALSE;
@@ -94,7 +99,11 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#type' => 'checkbox',
       '#title' => t("Category @num", array('@num' => $i)),
       '#default_value' => $enabled,
-
+      '#states' => array(
+        'visible' => array(
+          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'individual'),
+        ),
+      ),
     );
     $form['categories']['category_' . $i . '_textfield'] = array(
       '#type' => 'textfield',
@@ -105,6 +114,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#states' => array(
         'visible' => array(
           ':input[name="categories[category_' . $i . '_checkbox]"]' => array('checked' => TRUE),
+          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'individual'),
         ),
       ),
     );
@@ -304,29 +314,31 @@ function sunflower_proposal_form_validate($form, &$form_state) {
         form_set_error('proposal_details][presider_email', t('An email is required for the presider of the @type!', array('@type' => $type)));
       }
     }
-    $category_values = array();
-    // Category checking time.
-    for ($i = 1; $i <= 3; $i++) {
-      $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
-      if ($i == 1 && !$enabled) {
-        form_set_error('categories][category_1_checkbox', t('At least one category is required per proposal!'));
-      }
-
-      if ($enabled) {
-        if (empty($form_state['values']['categories']['category_' . $i . '_textfield'])) {
-          form_set_error('categories][category_' . $i . '_textfield', t('The category for category @num must not be empty!', array('@num' => $i)));
+    else {
+      $category_values = array();
+      // Category checking time.
+      for ($i = 1; $i <= 3; $i++) {
+        $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
+        if ($i == 1 && !$enabled) {
+          form_set_error('categories][category_1_checkbox', t('At least one category is required per proposal!'));
         }
-        else {
-          $value = $form_state['values']['categories']['category_' . $i . '_textfield'];
-          $existing = array_search($value, $category_values);
-          if ($existing) {
-            form_set_error('categories][category_' . $i . '_textfield', t('The value %value already is entered in category @num!', array(
-              '%value' => $value,
-              '@num' => $existing,
-            )));
+
+        if ($enabled) {
+          if (empty($form_state['values']['categories']['category_' . $i . '_textfield'])) {
+            form_set_error('categories][category_' . $i . '_textfield', t('The category for category @num must not be empty!', array('@num' => $i)));
           }
           else {
-            $category_values[$i] = $value;
+            $value = $form_state['values']['categories']['category_' . $i . '_textfield'];
+            $existing = array_search($value, $category_values);
+            if ($existing) {
+              form_set_error('categories][category_' . $i . '_textfield', t('The value %value already is entered in category @num!', array(
+                '%value' => $value,
+                '@num' => $existing,
+              )));
+            }
+            else {
+              $category_values[$i] = $value;
+            }
           }
         }
       }
@@ -566,13 +578,14 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   $proposal_data['av_requests'] = $form_state['values']['requests']['av_requests'];
 
   // Category checking time.
-  for ($i = 1; $i <= 3; $i++) {
-    $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
-    if ($enabled) {
-      $proposal_data["category_$i"] = $form_state['values']['categories']['category_' . $i . '_textfield'];
+  if ($type == 'individual') {
+    for ($i = 1; $i <= 3; $i++) {
+      $enabled = $form_state['values']['categories']['category_' . $i . '_checkbox'];
+      if ($enabled) {
+        $proposal_data["category_$i"] = $form_state['values']['categories']['category_' . $i . '_textfield'];
+      }
     }
   }
-
   // If it's not an individual presentation get the title and the chair.
   if ($type != 'individual') {
     $proposal_data['panel_roundtable_workshop_title'] = $form_state['values']['proposal_details']['panel_roundtable_workshop_title'];
