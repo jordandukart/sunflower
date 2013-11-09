@@ -40,6 +40,13 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       '#markup' => t('@title', array('@title' => $db_data['proposal']['panel_roundtable_workshop_title'])),
     );
   }
+  if (!empty($db_data['proposal']['panel_roundtable_workshop_abstract'])) {
+    $form['fieldset']['panel_roundtable_workshop_abstract'] = array(
+      '#type' => 'item',
+      '#title' => t('Abstract'),
+      '#markup' => t('@abstract', array('@abstract' => $db_data['proposal']['panel_roundtable_workshop_abstract'])),
+    );
+  }
   if (!empty($db_data['proposal']['presider_chair'])) {
     $form['fieldset']['presider_chair'] = array(
       '#type' => 'item',
@@ -52,6 +59,13 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       '#type' => 'item',
       '#title' => t('Presider E-mail'),
       '#markup' => t('@email', array('@email' => $db_data['proposal']['presider_email'])),
+    );
+  }
+  if (!empty($db_data['proposal']['presider_institution'])) {
+    $form['fieldset']['presider_institution'] = array(
+      '#type' => 'item',
+      '#title' => t('Presider Institutional Affiliation'),
+      '#markup' => t('@institutional_affiliation', array('@institutional_affiliation' => $db_data['proposal']['presider_institution'])),
     );
   }
   if (!empty($db_data['proposal']['category_1'])) {
@@ -82,7 +96,7 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       '#markup' => t('@category', array('@category' => $db_data['proposal']['category_3'])),
     );
   }
-  if (!empty($db_data['proposal']['special_requests']) || !empty($db_data['proposal']['av_requests'])) {
+  if (!empty($db_data['proposal']['special_requests']) || !empty($db_data['proposal']['av_requests']) || !empty($db_data['proposal']['respondent_name_institutional_affiliation'])) {
     $form['requests'] = array(
       '#type' => 'fieldset',
       '#title' => t('Requests'),
@@ -105,6 +119,13 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       '#markup' => t('@av', array('@av' => $db_data['proposal']['av_requests'])),
     );
   }
+  if (!empty($db_data['proposal']['respondent_name_institutional_affiliation'])) {
+    $form['requests']['respondent_name_institutional_affiliation'] = array(
+      '#type' => 'item',
+      '#title' => t('Respondent Name and Institutional Affiliation'),
+      '#markup' => t('@respondent_name_institutional_affiliation', array('@respondent_name_institutional_affiliation' => $db_data['proposal']['respondent_name_institutional_affiliation'])),
+    );
+  }
   foreach ($db_data['presenters'] as $num => $presenter) {
     if (!empty($presenter['presenter_name'])) {
       $form["presenter_$num"] = array(
@@ -120,13 +141,18 @@ function sunflower_proposal_summary_form($form, &$form_state, $proposal_id) {
       );
       $form["presenter_$num"]['paper_title'] = array(
         '#type' => 'item',
-        '#title' => t('Paper title'),
+        '#title' => t('Paper Title for Conference Program'),
         '#markup' => t('@title', array('@title' => $presenter['paper_title'])),
       );
       $form["presenter_$num"]['abstract'] = array(
         '#type' => 'item',
         '#title' => t('Abstract'),
         '#markup' => t('@abstract', array('@abstract' => $presenter['abstract'])),
+      );
+      $form["presenter_$num"]['institutional_affiliation'] = array(
+        '#type' => 'item',
+        '#title' => t('Institutional Affiliation'),
+        '#markup' => t('@institutional_affiliation', array('@institutional_affiliation' => $presenter['institutional_affiliation'])),
       );
     }
   }

@@ -66,8 +66,20 @@ function sunflower_schema() {
         'length' => 255,
         'not null' => FALSE,
       ),
+      'respondent_name_institutional_affiliation' => array(
+        'description' => 'AV requests for the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
       'panel_roundtable_workshop_title' => array(
         'description' => 'Panel, Roundtable or Workshop Title for the proposal',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'panel_roundtable_workshop_abstract' => array(
+        'description' => 'Panel, Roundtable or Workshop Abstract for the proposal',
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,
@@ -80,6 +92,12 @@ function sunflower_schema() {
       ),
       'presider_email' => array(
         'description' => 'Email of the presider chair for the Panel, Roundtable or Workshop',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'presider_institution' => array(
+        'description' => 'Institutional Affiliation of the Presider',
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,
@@ -116,6 +134,12 @@ function sunflower_schema() {
       ),
       'abstract' => array(
         'description' => 'The abstract of the paper',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'institutional_affiliation' => array(
+        'description' => 'The institutional affiliation of the presenter',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,

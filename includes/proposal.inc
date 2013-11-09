@@ -46,33 +46,6 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       'workshop' => t('Workshop Session'),
     ),
   );
-  $form['proposal_type']['panel_description'] = array(
-    '#type' => 'item',
-    '#markup' => t('A Panel Session proposal is a proposal for a complete session of different papers on a theme, complete with a presider, multiple papers, and (optionally) a respondent. A Short abstract and a longer description is required for each paper in the session. Presenters in a Panel Session must submit their proposals to the Panel Session organizer, who in turn is responsible for inputting them into our Sunflower system.'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'panel'),
-      ),
-    ),
-  );
-  $form['proposal_type']['roundtable_description'] = array(
-    '#type' => 'item',
-    '#markup' => t('A Roundtable Session Proposal is a proposal of a complete session, including a presider, a list of panelists, and (optionally) a respondent, all of whom will speak (ex tempore) on a common theme.'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'roundtable'),
-      ),
-    ),
-  );
-  $form['proposal_type']['workshop_description'] = array(
-    '#type' => 'item',
-    '#markup' => t('A Workshop Session Proposal includes up to four papers circulated in advance on a common theme.'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'workshop'),
-      ),
-    ),
-  );
   $form['categories'] = array(
     '#type' => 'fieldset',
     '#collapsed' => FALSE,
@@ -132,10 +105,21 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   );
   $form['proposal_details']['panel_roundtable_workshop_title'] = array(
     '#type' => 'textfield',
-    '#title' => t('Panel, Roundtable or Workshop Title'),
+    '#title' => t('Panel, Roundtable or Workshop Title for Conference Program'),
     '#description' => t('Maximum of 100 characters'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['panel_roundtable_workshop_title'] : '',
     '#maxlength' => 100,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
+      ),
+    ),
+  );
+  $form['proposal_details']['panel_roundtable_workshop_abstract'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Panel, Roundtable or Workshop Abstract for Conference Program'),
+    '#description' => t('Maximum of 150 words'),
+    '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['panel_roundtable_workshop_abstract'] : '',
     '#states' => array(
       'visible' => array(
         ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
@@ -163,6 +147,16 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       ),
     ),
   );
+  $form['proposal_details']['presider_institution'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Institutional Affiliation'),
+    '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['presider_institution'] : '',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="proposal_type[proposal_choices]"]' => array('!value' => 'individual'),
+      ),
+    ),
+  );
   $form['requests'] = array(
     '#type' => 'fieldset',
     '#title' => t('Requests'),
@@ -179,6 +173,11 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#type' => 'textarea',
     '#title' => t('AV Requests'),
     '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['av_requests'] : '',
+  );
+  $form['requests']['respondent_name_institutional_affiliation'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Respondent Name and Institutional Affiliation'),
+    '#default_value' => isset($db_data['proposal']) ? $db_data['proposal']['respondent_name_institutional_affiliation'] : '',
   );
 
   for ($i = 1; $i <= 8; $i++) {
@@ -203,7 +202,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     );
     $form['fieldset_' . $i]['paper_title'] = array(
       '#type' => 'textfield',
-      '#title' => t('Paper Title'),
+      '#title' => t('Paper Title for Conference Program'),
       '#description' => t('Maximum of 100 characters'),
       '#maxlength' => 100,
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['paper_title'] : FALSE,
@@ -213,6 +212,11 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
       '#title' => t('Abstract for Conference Program'),
       '#description' => t('Maximum of 150 words'),
       '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['abstract'] : FALSE,
+    );
+    $form['fieldset_' . $i]['institutional_affiliation'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Institutional Affiliation'),
+      '#default_value' => $default_presenter_value ? $db_data['presenters'][$i]['institutional_affiliation'] : FALSE,
     );
     if ($i > 2 && $i < 4) {
       $form['fieldset_' . $i]['#states'] = array(
@@ -307,11 +311,26 @@ function sunflower_proposal_form_validate($form, &$form_state) {
       if (empty($form_state['values']['proposal_details']['panel_roundtable_workshop_title'])) {
         form_set_error('proposal_details][panel_roundtable_workshop_title', t('A title is required for the @type!', array('@type' => $type)));
       }
+      if (empty($form_state['values']['proposal_details']['panel_roundtable_workshop_abstract'])) {
+        form_set_error('proposal_details][panel_roundtable_workshop_abstract', t('An abstract is required for the @type!', array('@type' => $type)));
+      }
+      else {
+        $number_of_words = str_word_count($form_state['values']['proposal_details']['panel_roundtable_workshop_abstract']);
+        if ($number_of_words > 150) {
+          form_set_error("proposal_details][panel_roundtable_workshop_abstract", t('The maximum number of words for the abstract of the @type is 150! You have entered @words words!', array(
+            '@type' => $type,
+            '@words' => $number_of_words,
+          )));
+        }
+      }
       if (empty($form_state['values']['proposal_details']['presider_chair'])) {
         form_set_error('proposal_details][presider_chair', t('A name is required for the presider of the @type!', array('@type' => $type)));
       }
       if (empty($form_state['values']['proposal_details']['presider_email'])) {
         form_set_error('proposal_details][presider_email', t('An email is required for the presider of the @type!', array('@type' => $type)));
+      }
+      if (empty($form_state['values']['proposal_details']['presider_institution'])) {
+        form_set_error('proposal_details][presider_institution', t('An institutional affiliation is required for the presider of the @type!', array('@type' => $type)));
       }
     }
     else {
@@ -347,6 +366,7 @@ function sunflower_proposal_form_validate($form, &$form_state) {
       'presenter_name' => t('presenter name'),
       'paper_title' => t('paper title'),
       'abstract' => t('abstract'),
+      'institutional_affiliation' => t('institutional affiliation'),
     );
     $minimum_required = FALSE;
     // Logic to check minimum required fields.
@@ -576,6 +596,7 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   $proposal_data['type'] = $type;
   $proposal_data['special_requests'] = $form_state['values']['requests']['special_requests'];
   $proposal_data['av_requests'] = $form_state['values']['requests']['av_requests'];
+  $proposal_data['respondent_name_institutional_affiliation'] = $form_state['values']['requests']['respondent_name_institutional_affiliation'];
 
   // Category checking time.
   if ($type == 'individual') {
@@ -589,13 +610,17 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   // If it's not an individual presentation get the title and the chair.
   if ($type != 'individual') {
     $proposal_data['panel_roundtable_workshop_title'] = $form_state['values']['proposal_details']['panel_roundtable_workshop_title'];
+    $proposal_data['panel_roundtable_workshop_abstract'] = $form_state['values']['proposal_details']['panel_roundtable_workshop_abstract'];
     $proposal_data['presider_chair'] = $form_state['values']['proposal_details']['presider_chair'];
     $proposal_data['presider_email'] = $form_state['values']['proposal_details']['presider_email'];
+    $proposal_data['presider_institution'] = $form_state['values']['proposal_details']['presider_institution'];
   }
   else {
     $proposal_data['panel_roundtable_workshop_title'] = '';
+    $proposal_data['panel_roundtable_workshop_abstract'] = '';
     $proposal_data['presider_chair'] = '';
     $proposal_data['presider_email'] = '';
+    $proposal_data['presider_institution'] = '';
   }
   $form_state['redirect'] = 'sunflower';
   drupal_set_message(t('The proposal has been submitted!'));

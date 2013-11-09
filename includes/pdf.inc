@@ -88,11 +88,17 @@ function sunflower_format_proposal_as_html($proposal_id) {
   if (!empty($db_data['proposal']['panel_roundtable_workshop_title'])) {
     $proposal_items[] = t('Title: @title', array('@title' => $db_data['proposal']['panel_roundtable_workshop_title']));
   }
+  if (!empty($db_data['proposal']['panel_roundtable_workshop_abstract'])) {
+    $proposal_items[] = t('Abstract: @abstract', array('@abstract' => $db_data['proposal']['panel_roundtable_workshop_abstract']));
+  }
   if (!empty($db_data['proposal']['presider_chair'])) {
     $proposal_items[] = t('Presider: @presider', array('@presider' => $db_data['proposal']['presider_chair']));
   }
   if (!empty($db_data['proposal']['presider_email'])) {
     $proposal_items[] = t('Presider E-mail: @email', array('@email' => $db_data['proposal']['presider_email']));
+  }
+  if (!empty($db_data['proposal']['presider_institution'])) {
+    $proposal_items[] = t('Presider Institutional Affiliation: @institution', array('@institution' => $db_data['proposal']['presider_institution']));
   }
 
   $proposal_list = array(
@@ -106,8 +112,9 @@ function sunflower_format_proposal_as_html($proposal_id) {
     if (!empty($presenter['presenter_name'])) {
       $presenter_list = array();
       $presenter_list[] = t('Name: @name', array('@name' => $presenter['presenter_name']));
-      $presenter_list[] = t('Paper title: @title', array('@title' => $presenter['paper_title']));
+      $presenter_list[] = t('Paper Title for Conference Program: @title', array('@title' => $presenter['paper_title']));
       $presenter_list[] = t('Abstract: @abstract', array('@abstract' => $presenter['abstract']));
+      $presenter_list[] = t('Institutional Affiliation: @institutional_affiliation', array('@institutional_affiliation' => $presenter['institutional_affiliation']));
       $form["presenter_$num"] = array(
         '#markup' => theme('item_list', array(
           'title' => t("Presenter @num", array('@num' => $num)),
@@ -143,6 +150,9 @@ function sunflower_format_proposal_as_html($proposal_id) {
   }
   if (!empty($db_data['proposal']['av_requests'])) {
     $request_list[] = t('AV Requests: @av', array('@av' => $db_data['proposal']['av_requests']));
+  }
+  if (!empty($db_data['proposal']['respondent_name_institutional_affiliation'])) {
+    $request_list[] = t('Respondent Name and Institutional Affiliation : @institutional_affiliation', array('@institutional_affiliation' => $db_data['proposal']['respondent_name_institutional_affiliation']));
   }
   if (count($request_list)) {
     $form['requests'] = array(
