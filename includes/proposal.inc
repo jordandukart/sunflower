@@ -238,7 +238,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     if ($i >= 5 && $i <= 8) {
       $form['fieldset_' . $i]['#states'] = array(
         'visible' => array(
-          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'roundtable'),
+          ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'workshop'),
         ),
       );
     }
@@ -295,15 +295,15 @@ function sunflower_proposal_form_validate($form, &$form_state) {
     $type = $form_state['values']['proposal_type']['proposal_choices'];
     $required_presenters = array(
       'individual' => 1,
-      'roundtable' => 5,
+      'roundtable' => 3,
       'panel' => 2,
-      'workshop' => 3,
+      'workshop' => 5,
     );
     $max_presenters = array(
       'individual' => 2,
-      'roundtable' => 8,
+      'roundtable' => 4,
       'panel' => 3,
-      'workshop' => 4,
+      'workshop' => 8,
     );
     $all_presenters = array();
     // Presider and workshop_panel_roundtable title required if not individual.
@@ -577,9 +577,9 @@ function sunflower_proposal_form_submit($form, &$form_state) {
   $presenter_data = array();
   $max_presenters = array(
     'individual' => 2,
-    'roundtable' => 8,
+    'roundtable' => 4,
     'panel' => 3,
-    'workshop' => 4,
+    'workshop' => 8,
   );
   $proposal_data['submitter_uid'] = isset($form_state['values']['submitter_uid']) ? $form_state['values']['submitter_uid'] : $user->uid;
   $proposal_data['last_modified'] = date("Y-m-d H:i:s");
