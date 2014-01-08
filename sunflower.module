@@ -167,3 +167,41 @@ function sunflower_proposal_summary_access($proposal_id) {
     return sunflower_is_valid_submitter() && ($submitter == $user->uid);
   }
 }
+
+/**
+ * Implements hook_update_N().
+ *
+ * Updates certain varchars fields to be text fields.
+ */
+function sunflower_update_7100() {
+  db_change_field('sunflower_proposals', 'special_requests', 'special_requests', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => FALSE,
+  ));
+  db_change_field('sunflower_proposals', 'av_requests', 'av_requests', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => FALSE,
+  ));
+  db_change_field('sunflower_proposals', 'panel_roundtable_workshop_title', 'panel_roundtable_workshop_title', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
+  db_change_field('sunflower_proposals', 'panel_roundtable_workshop_abstract', 'panel_roundtable_workshop_abstract', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
+  db_change_field('sunflower_presenters', 'paper_title', 'paper_title', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
+  db_change_field('sunflower_presenters', 'abstract', 'abstract', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
+}
