@@ -28,7 +28,7 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#type' => 'item',
     '#description' => t('Most the fields in this form are required. Please fill them out
     completely and accurately to the best of your ability. When the form is submitted, any missing
-    required fields will be highlighted with red and an error message directing you to the missing field will be displayed.
+    required fields will be highlighted with red and an error message will direct you to the missing fields.
     If, for a given field, you are not sure what to fill in please type "N/A". Thank you.'),
   );
   $db_data = array();
