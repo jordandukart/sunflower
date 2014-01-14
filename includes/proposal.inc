@@ -24,6 +24,13 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
   $form = array(
     '#tree' => TRUE,
   );
+  $form['error_description'] = array(
+    '#type' => 'item',
+    '#description' => t('Most the fields in this form are required. Please fill them out
+    completely and accurately to the best of your ability. When the form is submitted, any missing
+    required fields will be highlighted with red and an error message directing you to the missing field will be displayed.
+    If, for a given field, you are not sure what to fill in please type "N/A". Thank you.'),
+  );
   $db_data = array();
   if ($edit_submission !== NULL) {
     $db_data = sunflower_retrieve_data($edit_submission);
@@ -52,7 +59,10 @@ function sunflower_proposal_form($form, &$form_state, $edit_submission = NULL) {
     '#collapsible' => FALSE,
     '#weight' => 123,
     '#title' => t('Categories'),
-    '#description' => t('Indicate three broad thematic groups which your proposal might fall under'),
+    '#description' => t('Please identify a broad thematic group which your proposal might fall under. You can choose up to three category groups.
+    Doing so will help our Program Co-Chairs organize individual papers into panel sessions. As you type in the Category field below,
+    a list of predefined topics may appear. You can select from the predefined topics that will be displayed, and to see a list of all categories type in "*".
+    Alternatively, you can type your own category in the box.'),
     '#states' => array(
       'visible' => array(
         ':input[name="proposal_type[proposal_choices]"]' => array('value' => 'individual'),
